@@ -1,41 +1,133 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TradeHub Reports</title>
   <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #0f0f1a;
-      color: #e0e0e0;
-      padding: 40px;
-      line-height: 1.6;
+    :root {
+      --bg: #f8fbff;
+      --panel: #ffffff;
+      --ink: #1d2a38;
+      --ink-subtle: #5a6d82;
+      --line: #d7e3ef;
+      --accent: #0d6efd;
+      --accent-soft: #e8f1ff;
     }
-    .container { max-width: 900px; margin: 0 auto; }
-    h1 { color: #00bfff; border-bottom: 2px solid #00bfff; padding-bottom: 10px; }
-    h2 { color: #ffd700; margin-top: 30px; }
-    a { color: #ffd700; text-decoration: none; }
-    a:hover { text-decoration: underline; color: #fff; }
-    ul { list-style: none; padding-left: 0; }
-    li { margin-bottom: 10px; padding: 5px 0; border-bottom: 1px solid #2a2a3a; }
-    .path { color: #888; font-size: 0.85em; display: block; }
-    .footer { margin-top: 50px; font-size: 0.8em; color: #666; font-style: italic; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 0% 0%, #e8f2ff 0, transparent 50%),
+        radial-gradient(circle at 100% 100%, #eef7ee 0, transparent 45%),
+        var(--bg);
+      line-height: 1.5;
+    }
+    .page {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+    .header {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.9rem;
+      color: #0b4ea2;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 1.3rem;
+    }
+    h3 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+    }
+    p { margin: 0.35rem 0; }
+    a {
+      color: #0a4f9d;
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+    .meta {
+      display: block;
+      color: var(--ink-subtle);
+      font-size: 0.92rem;
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .latest-card {
+      background: var(--accent-soft);
+      border: 1px solid #c7ddff;
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .report-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .report-list li {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 0;
+    }
+    .report-list li:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .empty {
+      color: var(--ink-subtle);
+    }
+    footer {
+      margin-top: 24px;
+      color: var(--ink-subtle);
+      font-size: 0.9rem;
+    }
+    code {
+      background: #eef3f8;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-family: Consolas, "Courier New", monospace;
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>TradeHub - Published Reports</h1>
-    <p>Auto-generated from the latest <strong>master</strong> pipeline run.</p>
-    <h2>Latest Comparison Report</h2>
-    <ul>
-              </ul>
-              <h2>All HTML Reports</h2>
-              <ul>
-    </ul>
-    <div class="footer">
-      Generated at 2026-02-17 19:24:14 UTC from commit ee681ccaa21517923164097612db2efa437cc116
-    </div>
-  </div>
+  <main class="page">
+    <header class="header">
+      <h1>TradeHub Reports</h1>
+      <p>Public report mirror for the private TradeHub project.</p>
+      <p>Push report HTML files to <code>reports/</code> in this repository to publish them automatically.</p>
+    </header>
+    <section>
+      <h2>Latest Report</h2>
+      <article class="latest-card"><h3><a href="reports/monitoring/latest/index.html">TradeHub Monitoring</a></h3><p class="meta">reports/monitoring/latest/index.html | 2026-03-29 16:36 UTC</p><p>Most recently updated HTML report in this repository.</p></article>
+    </section>
+    <section>
+      <h2>Latest Comparison Report</h2>
+      <p class="empty">No matching reports found yet. The section updates automatically when new HTML reports are pushed to <code>reports/</code>.</p>
+    </section>
+    <section>
+      <h2>All Reports</h2>
+      <ul class="report-list">
+<li><a href="reports/monitoring/latest/index.html">TradeHub Monitoring</a><span class="meta">reports/monitoring/latest/index.html | 2026-03-29 16:36 UTC</span></li>
+</ul>
+    </section>
+    <footer>
+      <p>Generated at 2026-03-29 16:52 UTC from commit e7ad84f.</p>
+      <p>Deployment notes: <a href="docs/deployment.md">docs/deployment.md</a></p>
+    </footer>
+  </main>
 </body>
 </html>

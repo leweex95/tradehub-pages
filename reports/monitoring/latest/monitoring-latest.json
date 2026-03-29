@@ -1,0 +1,761 @@
+{
+  "generated_at": "2026-03-29T16:52:24.104587+00:00",
+  "history_meta": {
+    "run_count": 17,
+    "real_run_count": 3,
+    "synthetic_run_count": 14,
+    "latest_real_run_id": "20260329T165155Z"
+  },
+  "latest_run": {
+    "run_id": "20260329T165155Z",
+    "recorded_at": "2026-03-29T16:51:55.957723+00:00",
+    "date": "2026-03-29",
+    "is_synthetic": false,
+    "source": "local_monitoring",
+    "repo": {
+      "commit": "ec756953ce613d7c048e9f2ee311a0839c76bb64",
+      "short_commit": "ec75695",
+      "branch": "master",
+      "dirty": true
+    },
+    "environment": {
+      "python": "3.13.9",
+      "platform": "Windows-10-10.0.19045-SP0",
+      "processor": "Intel64 Family 6 Model 142 Stepping 12, GenuineIntel"
+    },
+    "suite_status": {
+      "profitability_failures": 0,
+      "speed_alerts": 0,
+      "fingerprint_changes": 0,
+      "overall_status": "pass"
+    },
+    "benchmarks": [
+      {
+        "id": "core_benchmark_a",
+        "public_name": "Core Benchmark A",
+        "config_hash": "18b002480436f7fac83d801aa0463a444f0b4c59991ecfe054e386023439c467",
+        "window": {
+          "start": "2025-03-01",
+          "end": "2025-05-01"
+        },
+        "news_input": {
+          "file_count": 20,
+          "fingerprint": "9bde5ce544d71dd3a22c5706ed2a13b89422960083f7acc2e6a19affef782387",
+          "start": "2025-03-03",
+          "end": "2025-05-01"
+        },
+        "summary": {
+          "elapsed_sec": 6.825,
+          "rows_processed": 227208,
+          "rows_per_sec": 33290.55,
+          "seconds_per_symbol": 2.275,
+          "trade_count": 6,
+          "wins": 4,
+          "losses": 2,
+          "win_rate_pct": 66.6667,
+          "net_pnl_dollars": 268.01,
+          "profit_factor": null,
+          "signals": 14,
+          "daily": [
+            {
+              "day": "2025-03-05",
+              "net_pnl_dollars": 109.76,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-03-07",
+              "net_pnl_dollars": -32.65,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-03-13",
+              "net_pnl_dollars": -105.47,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-03-24",
+              "net_pnl_dollars": 9.69,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-04-10",
+              "net_pnl_dollars": 145.87,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-04-30",
+              "net_pnl_dollars": 140.81,
+              "trade_count": 1
+            }
+          ],
+          "exit_reason_counts": {
+            "sl": 1,
+            "timeout": 3,
+            "tp": 2
+          },
+          "result_fingerprint": "c54d3a2a39bf8109004132bbb91618e8f39eb9a4ae54e889388823b5b09f0ced"
+        },
+        "symbols": [
+          {
+            "symbol": "EURUSD",
+            "summary": {
+              "trade_count": 1,
+              "wins": 1,
+              "losses": 0,
+              "win_rate_pct": 100.0,
+              "net_pnl_dollars": 145.87,
+              "return_pct": 1.46,
+              "profit_factor": null,
+              "avg_win": 145.87,
+              "avg_loss": 0.0,
+              "avg_bars_held": 48.0,
+              "max_drawdown_pct": 0.0,
+              "final_balance": 10145.87,
+              "signals": 3,
+              "exit_reason_counts": {
+                "tp": 1
+              },
+              "daily": [
+                {
+                  "day": "2025-04-10",
+                  "net_pnl_dollars": 145.87,
+                  "trade_count": 1
+                }
+              ],
+              "result_fingerprint": "451d34c3b70e64efd084f02ba46a6b441ab0a1e284cbc3fe03475282081197d8",
+              "elapsed_sec": 2.2007,
+              "rows_processed": 75775,
+              "rows_per_sec": 34431.57,
+              "seconds_per_1k_rows": 0.029
+            },
+            "input": {
+              "m1": {
+                "rows": 63139,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:59:00+00:00",
+                "fingerprint": "855b7eb9535b4d1cf895b75fd89d31b83fd782ebdfa1d7d5ee96e2f549895646"
+              },
+              "m5": {
+                "rows": 12636,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:55:00+00:00",
+                "fingerprint": "0576e58322ee56b5cfbf0c4e23d510960c8e26b73a3a65e24a6ed47a9792a488"
+              },
+              "combined_fingerprint": "52dc6e3a3f1ced2ee474f62b46b66c51f335d4f624c504271e8c4f21b070449c"
+            }
+          },
+          {
+            "symbol": "GBPUSD",
+            "summary": {
+              "trade_count": 1,
+              "wins": 1,
+              "losses": 0,
+              "win_rate_pct": 100.0,
+              "net_pnl_dollars": 109.76,
+              "return_pct": 1.1,
+              "profit_factor": null,
+              "avg_win": 109.76,
+              "avg_loss": 0.0,
+              "avg_bars_held": 150.0,
+              "max_drawdown_pct": 0.0,
+              "final_balance": 10109.76,
+              "signals": 4,
+              "exit_reason_counts": {
+                "timeout": 1
+              },
+              "daily": [
+                {
+                  "day": "2025-03-05",
+                  "net_pnl_dollars": 109.76,
+                  "trade_count": 1
+                }
+              ],
+              "result_fingerprint": "fa2c6d9c46ec3dac5cd9fd89c6ec225ab82ee25f4a5540c8a092e25057d4ebb1",
+              "elapsed_sec": 2.3382,
+              "rows_processed": 75772,
+              "rows_per_sec": 32406.33,
+              "seconds_per_1k_rows": 0.0309
+            },
+            "input": {
+              "m1": {
+                "rows": 63136,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:59:00+00:00",
+                "fingerprint": "67ab92a4ab6295239ea4467587e6524def5d7a1aa7007465c0467ef0c472a66a"
+              },
+              "m5": {
+                "rows": 12636,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:55:00+00:00",
+                "fingerprint": "384100273df879b26894fae6df50e0f13dab1d52ebc3603a7902dc5ef1f7139d"
+              },
+              "combined_fingerprint": "e99b92d2b44b73bcab354e53ffe51e3655e56d334051cc8c1849a250ea3c32d9"
+            }
+          },
+          {
+            "symbol": "USDJPY",
+            "summary": {
+              "trade_count": 4,
+              "wins": 2,
+              "losses": 2,
+              "win_rate_pct": 50.0,
+              "net_pnl_dollars": 12.38,
+              "return_pct": 0.12,
+              "profit_factor": 1.0896,
+              "avg_win": 75.25,
+              "avg_loss": -69.06,
+              "avg_bars_held": 116.0,
+              "max_drawdown_pct": 0.0,
+              "final_balance": 10012.38,
+              "signals": 7,
+              "exit_reason_counts": {
+                "sl": 1,
+                "timeout": 2,
+                "tp": 1
+              },
+              "daily": [
+                {
+                  "day": "2025-03-07",
+                  "net_pnl_dollars": -32.65,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-13",
+                  "net_pnl_dollars": -105.47,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-24",
+                  "net_pnl_dollars": 9.69,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-04-30",
+                  "net_pnl_dollars": 140.81,
+                  "trade_count": 1
+                }
+              ],
+              "result_fingerprint": "e80e1359611454d33c46dd96bfd67d34efe27363810c815a72aa458356d868bc",
+              "elapsed_sec": 2.2861,
+              "rows_processed": 75661,
+              "rows_per_sec": 33096.73,
+              "seconds_per_1k_rows": 0.0302
+            },
+            "input": {
+              "m1": {
+                "rows": 63031,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:59:00+00:00",
+                "fingerprint": "4384a71408a1817b046eed5c01c8b2194a26698f7e7d3633b79c1cac96b8225a"
+              },
+              "m5": {
+                "rows": 12630,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:55:00+00:00",
+                "fingerprint": "0f511bd78d7ce949bf1632165c5c5662df7664c5adef29adff4218c512956b03"
+              },
+              "combined_fingerprint": "6a49c92734a7d8f3d7a06b4f4c59249b05afabde9e69f067dec78a5cba1b2d00"
+            }
+          }
+        ],
+        "comparison_key": "0bad1780007ba3e1a162c2f9f5fc2aacf9c21c04a23397b33779acf1d1b9f2eb",
+        "baseline": {
+          "available": true,
+          "status": "pass",
+          "symbol_breaches": [],
+          "totals": {
+            "trade_count": 6,
+            "wins": 4,
+            "net_pnl_dollars": 268.01
+          },
+          "totals_delta": {
+            "trade_delta": 0,
+            "win_delta": 0,
+            "pnl_delta": 0.0
+          },
+          "pnl_tolerance": 0.02
+        },
+        "history_summary": {
+          "sample_size": 2,
+          "status": "insufficient_history",
+          "median_sec": 9.6058,
+          "upper_bound_sec": null,
+          "robust_sigma_sec": null,
+          "z_score": null
+        },
+        "status": {
+          "profitability": "pass",
+          "speed": "insufficient_history",
+          "fingerprint": "pass",
+          "input_changed_since_last_real_run": false
+        }
+      },
+      {
+        "id": "core_benchmark_b",
+        "public_name": "Core Benchmark B",
+        "config_hash": "738cd0c623f02149d10513781f024bb062104e22e4c7943ae62a047b72e3a1be",
+        "window": {
+          "start": "2025-03-01",
+          "end": "2025-05-01"
+        },
+        "news_input": {
+          "file_count": 20,
+          "fingerprint": "9bde5ce544d71dd3a22c5706ed2a13b89422960083f7acc2e6a19affef782387",
+          "start": "2025-03-03",
+          "end": "2025-05-01"
+        },
+        "summary": {
+          "elapsed_sec": 16.0969,
+          "rows_processed": 227208,
+          "rows_per_sec": 14115.02,
+          "seconds_per_symbol": 5.3656,
+          "trade_count": 31,
+          "wins": 20,
+          "losses": 11,
+          "win_rate_pct": 64.5161,
+          "net_pnl_dollars": 980.53,
+          "profit_factor": 17.1324,
+          "signals": 56,
+          "daily": [
+            {
+              "day": "2025-03-04",
+              "net_pnl_dollars": 124.69,
+              "trade_count": 3
+            },
+            {
+              "day": "2025-03-05",
+              "net_pnl_dollars": 129.93,
+              "trade_count": 2
+            },
+            {
+              "day": "2025-03-07",
+              "net_pnl_dollars": 106.55,
+              "trade_count": 2
+            },
+            {
+              "day": "2025-03-10",
+              "net_pnl_dollars": 153.3,
+              "trade_count": 2
+            },
+            {
+              "day": "2025-03-11",
+              "net_pnl_dollars": 58.38,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-03-13",
+              "net_pnl_dollars": -107.92,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-03-14",
+              "net_pnl_dollars": 260.57,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-03-17",
+              "net_pnl_dollars": 0.62,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-03-18",
+              "net_pnl_dollars": -76.17,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-03-19",
+              "net_pnl_dollars": -103.03,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-03-24",
+              "net_pnl_dollars": 191.18,
+              "trade_count": 2
+            },
+            {
+              "day": "2025-03-25",
+              "net_pnl_dollars": -109.56,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-03-26",
+              "net_pnl_dollars": -123.95,
+              "trade_count": 2
+            },
+            {
+              "day": "2025-03-27",
+              "net_pnl_dollars": 3.7,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-03-31",
+              "net_pnl_dollars": 53.95,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-04-02",
+              "net_pnl_dollars": 124.89,
+              "trade_count": 2
+            },
+            {
+              "day": "2025-04-08",
+              "net_pnl_dollars": -62.33,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-04-09",
+              "net_pnl_dollars": -16.02,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-04-10",
+              "net_pnl_dollars": 152.99,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-04-16",
+              "net_pnl_dollars": 176.82,
+              "trade_count": 2
+            },
+            {
+              "day": "2025-04-17",
+              "net_pnl_dollars": -104.4,
+              "trade_count": 1
+            },
+            {
+              "day": "2025-04-30",
+              "net_pnl_dollars": 146.33,
+              "trade_count": 1
+            }
+          ],
+          "exit_reason_counts": {
+            "ext_timeout": 2,
+            "sl": 5,
+            "timeout": 22,
+            "tp": 2
+          },
+          "result_fingerprint": "1d94e33e55505e4ea3e7afbde5c2308611bbf5cfc8ffb6263a0bd6083e343077"
+        },
+        "symbols": [
+          {
+            "symbol": "EURUSD",
+            "summary": {
+              "trade_count": 9,
+              "wins": 7,
+              "losses": 2,
+              "win_rate_pct": 77.7778,
+              "net_pnl_dollars": 629.59,
+              "return_pct": 6.3,
+              "profit_factor": 4.8989,
+              "avg_win": 113.01,
+              "avg_loss": -80.74,
+              "avg_bars_held": 98.33,
+              "max_drawdown_pct": 0.0,
+              "final_balance": 10629.59,
+              "signals": 21,
+              "exit_reason_counts": {
+                "ext_timeout": 1,
+                "sl": 1,
+                "timeout": 6,
+                "tp": 1
+              },
+              "daily": [
+                {
+                  "day": "2025-03-04",
+                  "net_pnl_dollars": 57.04,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-07",
+                  "net_pnl_dollars": 139.86,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-14",
+                  "net_pnl_dollars": 260.57,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-25",
+                  "net_pnl_dollars": -109.56,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-26",
+                  "net_pnl_dollars": -51.92,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-27",
+                  "net_pnl_dollars": 3.7,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-31",
+                  "net_pnl_dollars": 53.95,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-04-02",
+                  "net_pnl_dollars": 122.96,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-04-10",
+                  "net_pnl_dollars": 152.99,
+                  "trade_count": 1
+                }
+              ],
+              "result_fingerprint": "691d21004177fe19d6715ff931e63634917f80cb9794e6d3dbdc540a76c8908d",
+              "elapsed_sec": 5.2939,
+              "rows_processed": 75775,
+              "rows_per_sec": 14313.65,
+              "seconds_per_1k_rows": 0.0699
+            },
+            "input": {
+              "m1": {
+                "rows": 63139,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:59:00+00:00",
+                "fingerprint": "855b7eb9535b4d1cf895b75fd89d31b83fd782ebdfa1d7d5ee96e2f549895646"
+              },
+              "m5": {
+                "rows": 12636,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:55:00+00:00",
+                "fingerprint": "0576e58322ee56b5cfbf0c4e23d510960c8e26b73a3a65e24a6ed47a9792a488"
+              },
+              "combined_fingerprint": "52dc6e3a3f1ced2ee474f62b46b66c51f335d4f624c504271e8c4f21b070449c"
+            }
+          },
+          {
+            "symbol": "GBPUSD",
+            "summary": {
+              "trade_count": 9,
+              "wins": 5,
+              "losses": 4,
+              "win_rate_pct": 55.5556,
+              "net_pnl_dollars": -60.78,
+              "return_pct": -0.61,
+              "profit_factor": 0.8223,
+              "avg_win": 56.24,
+              "avg_loss": -85.49,
+              "avg_bars_held": 90.33,
+              "max_drawdown_pct": 0.0,
+              "final_balance": 9939.22,
+              "signals": 14,
+              "exit_reason_counts": {
+                "sl": 2,
+                "timeout": 7
+              },
+              "daily": [
+                {
+                  "day": "2025-03-04",
+                  "net_pnl_dollars": -103.2,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-05",
+                  "net_pnl_dollars": 109.76,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-10",
+                  "net_pnl_dollars": 88.92,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-11",
+                  "net_pnl_dollars": 58.38,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-17",
+                  "net_pnl_dollars": 0.62,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-26",
+                  "net_pnl_dollars": -72.03,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-04-08",
+                  "net_pnl_dollars": -62.33,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-04-16",
+                  "net_pnl_dollars": 23.5,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-04-17",
+                  "net_pnl_dollars": -104.4,
+                  "trade_count": 1
+                }
+              ],
+              "result_fingerprint": "f95bb46c934d54ab99e3dea99b5a2b6df0ec53a76a5f40599a896dd58254e102",
+              "elapsed_sec": 5.1692,
+              "rows_processed": 75772,
+              "rows_per_sec": 14658.39,
+              "seconds_per_1k_rows": 0.0682
+            },
+            "input": {
+              "m1": {
+                "rows": 63136,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:59:00+00:00",
+                "fingerprint": "67ab92a4ab6295239ea4467587e6524def5d7a1aa7007465c0467ef0c472a66a"
+              },
+              "m5": {
+                "rows": 12636,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:55:00+00:00",
+                "fingerprint": "384100273df879b26894fae6df50e0f13dab1d52ebc3603a7902dc5ef1f7139d"
+              },
+              "combined_fingerprint": "e99b92d2b44b73bcab354e53ffe51e3655e56d334051cc8c1849a250ea3c32d9"
+            }
+          },
+          {
+            "symbol": "USDJPY",
+            "summary": {
+              "trade_count": 13,
+              "wins": 8,
+              "losses": 5,
+              "win_rate_pct": 61.5385,
+              "net_pnl_dollars": 411.72,
+              "return_pct": 4.12,
+              "profit_factor": 2.2237,
+              "avg_win": 93.52,
+              "avg_loss": -67.29,
+              "avg_bars_held": 108.08,
+              "max_drawdown_pct": 0.0,
+              "final_balance": 10411.72,
+              "signals": 21,
+              "exit_reason_counts": {
+                "ext_timeout": 1,
+                "sl": 2,
+                "timeout": 9,
+                "tp": 1
+              },
+              "daily": [
+                {
+                  "day": "2025-03-04",
+                  "net_pnl_dollars": 170.85,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-05",
+                  "net_pnl_dollars": 20.17,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-07",
+                  "net_pnl_dollars": -33.31,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-10",
+                  "net_pnl_dollars": 64.38,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-13",
+                  "net_pnl_dollars": -107.92,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-18",
+                  "net_pnl_dollars": -76.17,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-19",
+                  "net_pnl_dollars": -103.03,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-03-24",
+                  "net_pnl_dollars": 191.18,
+                  "trade_count": 2
+                },
+                {
+                  "day": "2025-04-02",
+                  "net_pnl_dollars": 1.93,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-04-09",
+                  "net_pnl_dollars": -16.02,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-04-16",
+                  "net_pnl_dollars": 153.32,
+                  "trade_count": 1
+                },
+                {
+                  "day": "2025-04-30",
+                  "net_pnl_dollars": 146.33,
+                  "trade_count": 1
+                }
+              ],
+              "result_fingerprint": "f990ed396ac5661a3923ca4adbcf51152bfa3b50a9e019ee6eeec7675020ff6a",
+              "elapsed_sec": 5.6338,
+              "rows_processed": 75661,
+              "rows_per_sec": 13429.88,
+              "seconds_per_1k_rows": 0.0745
+            },
+            "input": {
+              "m1": {
+                "rows": 63031,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:59:00+00:00",
+                "fingerprint": "4384a71408a1817b046eed5c01c8b2194a26698f7e7d3633b79c1cac96b8225a"
+              },
+              "m5": {
+                "rows": 12630,
+                "start": "2025-03-03T00:00:00+00:00",
+                "end": "2025-05-01T23:55:00+00:00",
+                "fingerprint": "0f511bd78d7ce949bf1632165c5c5662df7664c5adef29adff4218c512956b03"
+              },
+              "combined_fingerprint": "6a49c92734a7d8f3d7a06b4f4c59249b05afabde9e69f067dec78a5cba1b2d00"
+            }
+          }
+        ],
+        "comparison_key": "411d114c162a5d65b93559563f320d54f808abcc6b43c027b969c371bc47f59e",
+        "baseline": {
+          "available": true,
+          "status": "pass",
+          "symbol_breaches": [],
+          "totals": {
+            "trade_count": 31,
+            "wins": 20,
+            "net_pnl_dollars": 980.53
+          },
+          "totals_delta": {
+            "trade_delta": 0,
+            "win_delta": 0,
+            "pnl_delta": 0.0
+          },
+          "pnl_tolerance": 0.02
+        },
+        "history_summary": {
+          "sample_size": 2,
+          "status": "insufficient_history",
+          "median_sec": 24.1696,
+          "upper_bound_sec": null,
+          "robust_sigma_sec": null,
+          "z_score": null
+        },
+        "status": {
+          "profitability": "pass",
+          "speed": "insufficient_history",
+          "fingerprint": "pass",
+          "input_changed_since_last_real_run": false
+        }
+      }
+    ]
+  }
+}

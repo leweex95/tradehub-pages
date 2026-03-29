@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TradeHub Monitoring</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">TradeHub Monitoring</p>
+        <h1>Daily backtest stability dashboard</h1>
+        <p class="lede">
+          Repo-level monitoring for benchmark speed, profitability stability, result fingerprints,
+          and input drift. Public output is sanitized: hashes and aggregates only, no private params.
+        </p>
+      </div>
+      <div class="hero-meta" id="hero-meta"></div>
+    </section>
+
+    <section class="panel banner hidden" id="demo-banner"></section>
+
+    <section class="panel controls">
+      <div class="control">
+        <label for="benchmark-select">Benchmark</label>
+        <select id="benchmark-select"></select>
+      </div>
+      <div class="control">
+        <label for="symbol-select">Symbol Scope</label>
+        <select id="symbol-select"></select>
+      </div>
+      <div class="control">
+        <label for="metric-select">Profitability Trend</label>
+        <select id="metric-select">
+          <option value="net_pnl_dollars">Net PnL</option>
+          <option value="win_rate_pct">Win Rate %</option>
+          <option value="trade_count">Trade Count</option>
+          <option value="profit_factor">Profit Factor</option>
+        </select>
+      </div>
+      <div class="control checkbox">
+        <label for="synthetic-toggle">Include seeded demo history</label>
+        <input id="synthetic-toggle" type="checkbox" checked>
+      </div>
+    </section>
+
+    <section class="summary-grid" id="summary-grid"></section>
+
+    <section class="chart-grid">
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Speed Stability</p>
+            <h2>Runtime over time</h2>
+          </div>
+          <p class="note" id="runtime-note"></p>
+        </div>
+        <div class="chart-wrap">
+          <svg id="runtime-chart" viewBox="0 0 860 300" preserveAspectRatio="none"></svg>
+        </div>
+      </article>
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Output Stability</p>
+            <h2>Profitability trend</h2>
+          </div>
+          <p class="note" id="metric-note"></p>
+        </div>
+        <div class="chart-wrap">
+          <svg id="metric-chart" viewBox="0 0 860 300" preserveAspectRatio="none"></svg>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Latest Breakdown</p>
+          <h2>Per-symbol benchmark details</h2>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="symbol-table">
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Runtime</th>
+              <th>Rows/sec</th>
+              <th>Trades</th>
+              <th>Win rate</th>
+              <th>Net PnL</th>
+              <th>Baseline</th>
+              <th>Result hash</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="chart-grid">
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Per-Day Slice</p>
+            <h2>Daily PnL for latest run</h2>
+          </div>
+          <p class="note" id="daily-note"></p>
+        </div>
+        <div class="chart-wrap">
+          <svg id="daily-chart" viewBox="0 0 860 300" preserveAspectRatio="none"></svg>
+        </div>
+      </article>
+      <article class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Alerts</p>
+            <h2>Current regression signals</h2>
+          </div>
+        </div>
+        <div id="alerts-list" class="alerts-list"></div>
+      </article>
+    </section>
+
+    <footer class="footer">
+      <p id="footer-copy"></p>
+    </footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
