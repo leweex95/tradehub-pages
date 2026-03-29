@@ -5,48 +5,57 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TradeHub Monitoring</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
   <main class="page">
-    <section class="hero">
+    <section class="hero panel">
       <div>
         <p class="eyebrow">TradeHub Monitoring</p>
-        <h1>Daily backtest stability dashboard</h1>
+        <h1>Long-term repo regression dashboard</h1>
         <p class="lede">
-          Repo-level monitoring for benchmark speed, profitability stability, result fingerprints,
-          and input drift. Public output is sanitized: hashes and aggregates only, no private params.
+          Daily fixed-scope backtests for runtime stability, profitability drift, result fingerprints,
+          and sanitized input drift. Public output exposes only aggregates, hashes, dates, and symbol scope.
         </p>
       </div>
-      <div class="hero-meta" id="hero-meta"></div>
+      <div class="hero-actions">
+        <label class="theme-picker" for="theme-select">
+          <span>Theme</span>
+          <select id="theme-select">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+          </select>
+        </label>
+        <div class="hero-meta" id="hero-meta"></div>
+      </div>
     </section>
 
-    <section class="panel banner hidden" id="demo-banner"></section>
-
-    <section class="panel controls">
-      <div class="control">
-        <label for="benchmark-select">Benchmark</label>
+    <section class="controls panel">
+      <label class="control" for="benchmark-select">
+        <span>Strategy Nickname</span>
         <select id="benchmark-select"></select>
-      </div>
-      <div class="control">
-        <label for="symbol-select">Symbol Scope</label>
+      </label>
+      <label class="control" for="symbol-select">
+        <span>Symbol Scope</span>
         <select id="symbol-select"></select>
-      </div>
-      <div class="control">
-        <label for="metric-select">Profitability Trend</label>
+      </label>
+      <label class="control" for="metric-select">
+        <span>Profitability Trend</span>
         <select id="metric-select">
           <option value="net_pnl_dollars">Net PnL</option>
           <option value="win_rate_pct">Win Rate %</option>
           <option value="trade_count">Trade Count</option>
           <option value="profit_factor">Profit Factor</option>
         </select>
-      </div>
-      <div class="control checkbox">
-        <label for="synthetic-toggle">Include seeded demo history</label>
-        <input id="synthetic-toggle" type="checkbox" checked>
-      </div>
+      </label>
     </section>
 
     <section class="summary-grid" id="summary-grid"></section>
+
+    <section class="scope-grid">
+      <article class="panel scope-card" id="scope-card"></article>
+      <article class="panel scope-card" id="integrity-card"></article>
+    </section>
 
     <section class="chart-grid">
       <article class="panel">
@@ -57,9 +66,7 @@
           </div>
           <p class="note" id="runtime-note"></p>
         </div>
-        <div class="chart-wrap">
-          <svg id="runtime-chart" viewBox="0 0 860 300" preserveAspectRatio="none"></svg>
-        </div>
+        <div class="plot" id="runtime-chart"></div>
       </article>
       <article class="panel">
         <div class="panel-head">
@@ -69,9 +76,7 @@
           </div>
           <p class="note" id="metric-note"></p>
         </div>
-        <div class="chart-wrap">
-          <svg id="metric-chart" viewBox="0 0 860 300" preserveAspectRatio="none"></svg>
-        </div>
+        <div class="plot" id="metric-chart"></div>
       </article>
     </section>
 
@@ -110,9 +115,7 @@
           </div>
           <p class="note" id="daily-note"></p>
         </div>
-        <div class="chart-wrap">
-          <svg id="daily-chart" viewBox="0 0 860 300" preserveAspectRatio="none"></svg>
-        </div>
+        <div class="plot" id="daily-chart"></div>
       </article>
       <article class="panel">
         <div class="panel-head">
