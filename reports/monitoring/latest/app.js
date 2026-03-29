@@ -65,7 +65,7 @@ function plot(id, traces, extra = {}, config = {}) {
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     margin: { t: 10, r: 12, b: 42, l: 56 },
-    hovermode: "x unified",
+    hovermode: "closest",
     font: { color: cssVar("--ink-muted"), family: "Inter, Segoe UI, Arial, sans-serif", size: 12 },
     xaxis: { gridcolor: cssVar("--plot-grid"), linecolor: cssVar("--plot-grid"), tickfont: { color: cssVar("--ink-muted") } },
     yaxis: { gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"), tickfont: { color: cssVar("--ink-muted") } },
@@ -287,7 +287,10 @@ function renderTabPane(nickname, stratGroups) {
 
   renderPaneAlerts(nickname, benchmarks);
   renderPaneMonths(nickname, benchmarks);
-  renderPaneScope(nickname, benchmarks[0] ?? null);
+  // Read scope from the suite-level history.benchmarks (reflects current YAML config),
+  // falling back to the run benchmark when not available.
+  const suiteMeta = (state.history?.benchmarks ?? []).find(b => b.id === (benchmarks[0]?.id ?? ""));
+  renderPaneScope(nickname, suiteMeta ?? benchmarks[0] ?? null);
   renderPaneIntegrity(nickname, latestRun);
 }
 
@@ -343,7 +346,11 @@ function renderPaneMonths(nickname, benchmarks) {
     const barColor = pnl >= 0 ? "var(--good)" : "var(--danger)";
     const alertBadge = (b.status?.profitability === "fail" || b.status?.speed === "alert")
       ? `<span class="pill alert" style="margin-left:8px;font-size:.7rem">alert</span>` : "";
-    const label = b.window ? `${b.window.start.slice(0,7)}` : b.public_name;
+    const label = b.window
+      ? (b.window.start.slice(0, 7) === b.window.end.slice(0, 7)
+          ? b.window.start.slice(0, 7)
+          : `${b.window.start.slice(0, 7)} \u2192 ${b.window.end.slice(0, 7)}`)
+      : b.public_name;
 
     return `
       <div class="month-card" id="mc-${esc(nickname)}-${idx}" data-idx="${idx}" data-nick="${esc(nickname)}">

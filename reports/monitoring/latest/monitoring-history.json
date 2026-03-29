@@ -1,10 +1,10 @@
 {
   "schema_version": 2,
-  "generated_at": "2026-03-29T17:39:14.803188+00:00",
+  "generated_at": "2026-03-29T20:39:39.882648+00:00",
   "suite": {
     "id": "daily-repo-monitor",
     "public_title": "TradeHub Daily Monitoring",
-    "description": "Fixed backtest benchmarks for long-term regression detection. The public dashboard exposes only aggregates and fingerprints, never raw private configuration values.\n"
+    "description": "Fixed backtest benchmarks for long-term regression detection. The same window is backtested every day \u2014 any change in results signals a code regression. Public output exposes only aggregates and hashes.\n"
   },
   "reference": {
     "baseline_source": "tests/test_strategy_regression.py",
@@ -28,11 +28,17 @@
         "end": "2025-05-01"
       },
       "symbol_scope": {
-        "count": 3,
+        "count": 9,
         "symbols": [
           "EURUSD",
           "GBPUSD",
-          "USDJPY"
+          "USDJPY",
+          "AUDUSD",
+          "USDCAD",
+          "USDCHF",
+          "EURGBP",
+          "EURJPY",
+          "GBPJPY"
         ]
       },
       "timeframes": {
@@ -50,11 +56,17 @@
         "end": "2025-05-01"
       },
       "symbol_scope": {
-        "count": 3,
+        "count": 9,
         "symbols": [
           "EURUSD",
           "GBPUSD",
-          "USDJPY"
+          "USDJPY",
+          "AUDUSD",
+          "USDCAD",
+          "USDCHF",
+          "EURGBP",
+          "EURJPY",
+          "GBPJPY"
         ]
       },
       "timeframes": {

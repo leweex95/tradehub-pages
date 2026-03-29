@@ -2,11 +2,11 @@
    CSS CUSTOM PROPERTIES  — dark (default) + light overrides
    ============================================================ */
 :root {
-  --bg: #080e14;
-  --bg2: #0c1520;
-  --panel: rgba(12, 21, 32, 0.85);
-  --panel-raised: #0e1d2d;
-  --panel-border: rgba(148, 182, 210, 0.11);
+  --bg: #03060a;
+  --bg2: #060d15;
+  --panel: rgba(4, 9, 16, 0.97);
+  --panel-raised: #080f1a;
+  --panel-border: rgba(148, 182, 210, 0.09);
   --ink: #ddeaf4;
   --ink-muted: #7a98ae;
   --ink-faint: rgba(221, 234, 244, 0.35);
@@ -14,18 +14,18 @@
   --accent-glow: rgba(65, 217, 168, 0.18);
   --accent-border: rgba(65, 217, 168, 0.28);
   --warn: #f5c26b;
-  --warn-soft: rgba(245, 194, 107, 0.14);
+  --warn-soft: rgba(245, 194, 107, 0.12);
   --danger: #ff7b61;
-  --danger-soft: rgba(255, 123, 97, 0.14);
+  --danger-soft: rgba(255, 123, 97, 0.12);
   --good: #6fd98f;
-  --good-soft: rgba(111, 217, 143, 0.14);
-  --shadow: 0 32px 64px rgba(0, 0, 0, 0.4);
-  --shadow-sm: 0 6px 20px rgba(0, 0, 0, 0.28);
+  --good-soft: rgba(111, 217, 143, 0.12);
+  --shadow: 0 32px 64px rgba(0, 0, 0, 0.65);
+  --shadow-sm: 0 6px 20px rgba(0, 0, 0, 0.5);
   --plot-bg: rgba(0,0,0,0);
-  --plot-grid: rgba(148, 182, 210, 0.1);
-  --header-bg: rgba(8, 14, 20, 0.88);
+  --plot-grid: rgba(148, 182, 210, 0.08);
+  --header-bg: rgba(3, 6, 10, 0.98);
   --tab-active-bg: var(--panel-raised);
-  --tab-hover-bg: rgba(65, 217, 168, 0.07);
+  --tab-hover-bg: rgba(65, 217, 168, 0.06);
 
   /* Palette keys for JS */
   --c0: #41d9a8;
@@ -81,8 +81,8 @@ body {
   line-height: 1.6;
   background: var(--bg);
   background-image:
-    radial-gradient(ellipse at 10% 0%, rgba(65,217,168,.07) 0%, transparent 50%),
-    radial-gradient(ellipse at 90% 100%, rgba(255,123,97,.06) 0%, transparent 50%);
+    radial-gradient(ellipse at 10% 0%, rgba(65,217,168,.04) 0%, transparent 45%),
+    radial-gradient(ellipse at 90% 100%, rgba(255,123,97,.03) 0%, transparent 45%);
   min-height: 100vh;
   transition: background .25s, color .25s;
 }
@@ -464,7 +464,7 @@ h3 { font-family: Georgia, "Times New Roman", serif; font-size: 1.05rem; font-we
   border-radius: 14px;
   padding: 14px 16px;
   display: grid;
-  grid-template-columns: 100px 1fr auto;
+  grid-template-columns: minmax(140px, auto) 1fr auto;
   align-items: center;
   gap: 16px;
   cursor: pointer;
@@ -587,7 +587,7 @@ tbody tr:hover { background: var(--tab-hover-bg); }
   .hero-kpis         { grid-template-columns: repeat(3, 1fr); }
   .chart-pair        { grid-template-columns: 1fr; }
   .stat-row          { grid-template-columns: repeat(3, 1fr); }
-  .month-card        { grid-template-columns: 80px 1fr auto; }
+  .month-card        { grid-template-columns: minmax(110px, auto) 1fr auto; }
 }
 
 @media (max-width: 600px) {
