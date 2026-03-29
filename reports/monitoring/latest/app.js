@@ -1,540 +1,447 @@
-const THEME_KEY = "tradehub-monitoring-theme";
+﻿// =============================================================================
+// TradeHub Monitoring Dashboard — app.js
+// =============================================================================
 
+const THEME_KEY = "tradehub-monitoring-theme";
+const PALETTE = ["--c0","--c1","--c2","--c3","--c4","--c5"];
+
+// ── State ─────────────────────────────────────────────────────────────────────
 const state = {
-  history: null,
-  benchmarkId: null,
-  symbol: "ALL",
-  metric: "net_pnl_dollars",
+  history: null,      // full history document
+  activeTab: null,    // strategy nickname currently shown
   theme: localStorage.getItem(THEME_KEY) || "dark",
 };
 
-const els = {
-  benchmarkSelect: document.getElementById("benchmark-select"),
-  symbolSelect: document.getElementById("symbol-select"),
-  metricSelect: document.getElementById("metric-select"),
-  themeSelect: document.getElementById("theme-select"),
-  heroMeta: document.getElementById("hero-meta"),
-  summaryGrid: document.getElementById("summary-grid"),
-  scopeCard: document.getElementById("scope-card"),
-  integrityCard: document.getElementById("integrity-card"),
-  runtimeNote: document.getElementById("runtime-note"),
-  metricNote: document.getElementById("metric-note"),
-  dailyNote: document.getElementById("daily-note"),
-  symbolTableBody: document.querySelector("#symbol-table tbody"),
-  alertsList: document.getElementById("alerts-list"),
-  footerCopy: document.getElementById("footer-copy"),
-};
+// ── Apply initial theme synchronously to avoid flash ─────────────────────────
+document.documentElement.dataset.theme = state.theme;
 
-const currency = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2,
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const currency = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function esc(v) {
+  return String(v ?? "")
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function fmt(v, d = 2) {
+  if (v == null || isNaN(v)) return "n/a";
+  return Number(v).toFixed(d);
+}
+function fmtS(v, d = 2) {
+  if (v == null || isNaN(v)) return "n/a";
+  return (v >= 0 ? "+" : "") + Number(v).toFixed(d);
+}
+function debounce(fn, ms) {
+  let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+}
+function getRuns() { return state.history?.runs ?? []; }
+function getLatestRun() { const r = getRuns(); return r[r.length - 1] ?? null; }
+
+// Groups benchmarks by their base nickname (strip trailing _YYYY_MM or _YYYY etc.)
+function strategyNicknameOf(benchmark) {
+  const id = benchmark?.id ?? "";
+  // strip _2025_01 style suffix
+  return id.replace(/_\d{4}(_\d{2})?$/, "") || benchmark?.nickname || id;
+}
+
+function groupBenchmarksByStrategy(benchmarks) {
+  const map = new Map();
+  for (const b of benchmarks) {
+    const key = strategyNicknameOf(b);
+    if (!map.has(key)) map.set(key, { nickname: key, public_name: b.public_name?.replace(/\s+\d{4}.*$/, "") || key, benchmarks: [] });
+    map.get(key).benchmarks.push(b);
+  }
+  return [...map.values()];
+}
+
+// ── Plot helper ───────────────────────────────────────────────────────────────
+function plot(id, traces, extra = {}, config = {}) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const layout = {
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    margin: { t: 10, r: 12, b: 42, l: 56 },
+    hovermode: "x unified",
+    font: { color: cssVar("--ink-muted"), family: "Inter, Segoe UI, Arial, sans-serif", size: 12 },
+    xaxis: { gridcolor: cssVar("--plot-grid"), linecolor: cssVar("--plot-grid"), tickfont: { color: cssVar("--ink-muted") } },
+    yaxis: { gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"), tickfont: { color: cssVar("--ink-muted") } },
+    legend: { orientation: "h", x: 0, y: 1.18, font: { color: cssVar("--ink-muted"), size: 11 } },
+    ...extra,
+  };
+  Plotly.react(el, traces, layout, { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["lasso2d","select2d","autoScale2d"], ...config });
+}
+
+// ── Fetch & boot ──────────────────────────────────────────────────────────────
+fetch("monitoring-history.json")
+  .then(r => r.json())
+  .then(data => {
+    state.history = data;
+    const stratGroups = groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []);
+    state.activeTab = stratGroups[0]?.nickname ?? null;
+    boot(stratGroups);
+  })
+  .catch(err => {
+    document.body.innerHTML = `<main class="page"><div class="panel" style="padding:32px"><p class="empty-state">Failed to load dashboard data: ${esc(String(err))}</p></div></main>`;
+  });
+
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("theme-toggle");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    state.theme = state.theme === "dark" ? "light" : "dark";
+    localStorage.setItem(THEME_KEY, state.theme);
+    document.documentElement.dataset.theme = state.theme;
+    renderCharts();   // redraw Plotly after palette change
+  });
 });
 
-applyTheme(state.theme);
+window.addEventListener("resize", debounce(renderCharts, 120));
 
-fetch("monitoring-history.json")
-  .then((response) => response.json())
-  .then((history) => {
-    state.history = history;
-    state.benchmarkId = history?.benchmarks?.[0]?.id || getLatestRun()?.benchmarks?.[0]?.id || null;
-    populateControls();
-    bindEvents();
-    render();
-  })
-  .catch((error) => {
-    document.body.innerHTML = `<main class="page"><section class="panel"><p class="empty-state">Failed to load dashboard data: ${escapeHtml(String(error))}</p></section></main>`;
-  });
-
-function bindEvents() {
-  els.benchmarkSelect.addEventListener("change", () => {
-    state.benchmarkId = els.benchmarkSelect.value;
-    rebuildSymbolOptions();
-    render();
-  });
-  els.symbolSelect.addEventListener("change", () => {
-    state.symbol = els.symbolSelect.value;
-    render();
-  });
-  els.metricSelect.addEventListener("change", () => {
-    state.metric = els.metricSelect.value;
-    render();
-  });
-  els.themeSelect.addEventListener("change", () => {
-    state.theme = els.themeSelect.value;
-    localStorage.setItem(THEME_KEY, state.theme);
-    applyTheme(state.theme);
-    render();
-  });
-  window.addEventListener("resize", debounce(renderChartsOnly, 120));
-}
-
-function populateControls() {
-  const benchmarks = state.history?.benchmarks || [];
-  els.benchmarkSelect.innerHTML = benchmarks
-    .map((benchmark) => `<option value="${benchmark.id}">${escapeHtml(benchmark.public_name)}</option>`)
-    .join("");
-  els.benchmarkSelect.value = state.benchmarkId;
-  els.metricSelect.value = state.metric;
-  els.themeSelect.value = state.theme;
-  rebuildSymbolOptions();
-}
-
-function rebuildSymbolOptions() {
-  const benchmark = getLatestBenchmark();
-  const symbols = benchmark?.symbol_scope?.symbols || [];
-  const values = ["ALL", ...symbols];
-  if (!values.includes(state.symbol)) {
-    state.symbol = "ALL";
-  }
-  els.symbolSelect.innerHTML = values
-    .map((value) => `<option value="${value}">${value === "ALL" ? "All symbols" : escapeHtml(value)}</option>`)
-    .join("");
-  els.symbolSelect.value = state.symbol;
-}
-
-function render() {
+// ── Root boot ─────────────────────────────────────────────────────────────────
+function boot(stratGroups) {
   renderHero();
-  renderSummary();
-  renderScopeCards();
-  renderChartsOnly();
-  renderSymbolTable();
-  renderAlerts();
+  renderHeaderStatus();
+  renderAggCharts(stratGroups);
+  renderAggLegend(stratGroups);
+  renderTabs(stratGroups);
   renderFooter();
 }
 
-function renderChartsOnly() {
-  renderRuntimeChart();
-  renderMetricChart();
-  renderDailyChart();
+function renderCharts() {
+  const stratGroups = groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []);
+  renderAggCharts(stratGroups);
+  // also redraw any open pane charts
+  if (state.activeTab) renderTabPane(state.activeTab, stratGroups);
 }
 
+// ── Hero ──────────────────────────────────────────────────────────────────────
 function renderHero() {
+  const kpis = document.getElementById("hero-kpis");
+  if (!kpis) return;
   const latestRun = getLatestRun();
-  const latestBenchmark = getLatestBenchmark();
-  const meta = state.history?.history_meta || {};
-  els.heroMeta.innerHTML = `
-    <article class="hero-stat">
-      <p class="eyebrow">Latest Real Run</p>
-      <strong>${escapeHtml(latestRun?.date || "n/a")}</strong>
-      <span>${escapeHtml(latestRun?.repo?.short_commit || "unknown")}${latestRun?.repo?.dirty ? " - dirty worktree" : ""}</span>
-    </article>
-    <article class="hero-stat">
-      <p class="eyebrow">History Coverage</p>
-      <strong>${meta.real_run_count || 0} daily point${(meta.real_run_count || 0) === 1 ? "" : "s"}</strong>
-      <span>No repeated same-day same-commit runs counted twice.</span>
-    </article>
-    <article class="hero-stat">
-      <p class="eyebrow">Selected Strategy</p>
-      <strong>${escapeHtml(latestBenchmark?.public_name || "n/a")}</strong>
-      <span>${escapeHtml(state.symbol === "ALL" ? "Aggregate view" : `Symbol ${state.symbol}`)}</span>
-    </article>
-  `;
-}
+  const meta = state.history?.history_meta ?? {};
+  const allBenchmarks = latestRun?.benchmarks ?? [];
+  const totalAlerts = allBenchmarks.filter(b => b.status?.profitability === "fail" || b.status?.speed === "alert").length;
 
-function renderSummary() {
-  const benchmark = getLatestBenchmark();
-  const source = getSelectedSource(benchmark);
-  if (!benchmark || !source) {
-    els.summaryGrid.innerHTML = `<section class="summary-card"><p class="empty-state">No benchmark data available.</p></section>`;
-    return;
-  }
-
-  const cards = [
-    {
-      label: "Runtime",
-      value: `${formatNumber(source.elapsed_sec, 2)}s`,
-      meta: speedLabel(benchmark.status.speed),
-      status: pillClass(benchmark.status.speed),
-    },
-    {
-      label: "Rows / sec",
-      value: formatNumber(source.rows_per_sec, 2),
-      meta: "Normalized throughput",
-      status: "info",
-    },
-    {
-      label: "Net PnL",
-      value: currency.format(source.net_pnl_dollars || 0),
-      meta: metricLabel(state.metric),
-      status: source.net_pnl_dollars >= 0 ? "pass" : "warn",
-    },
-    {
-      label: "Result Stability",
-      value: `${formatNumber(source.win_rate_pct, 2)}%`,
-      meta: `Baseline ${benchmark.status.profitability} / fingerprint ${benchmark.status.fingerprint}`,
-      status: pillClass(
-        benchmark.status.profitability === "fail" || benchmark.status.fingerprint === "changed"
-          ? "alert"
-          : benchmark.status.speed
-      ),
-    },
-  ];
-
-  els.summaryGrid.innerHTML = cards.map((card) => `
-    <section class="summary-card">
-      <p class="eyebrow">${escapeHtml(card.label)}</p>
-      <span class="summary-value">${escapeHtml(card.value)}</span>
-      <p class="summary-meta"><span class="pill ${card.status}">${escapeHtml(card.meta)}</span></p>
-    </section>
+  kpis.innerHTML = [
+    { label: "Latest run",        value: latestRun?.date ?? "n/a",              sub: latestRun?.repo?.short_commit ?? "" },
+    { label: "Daily points",      value: meta.real_run_count ?? 0,               sub: "real runs tracked" },
+    { label: "Active benchmarks", value: allBenchmarks.length,                   sub: "this suite" },
+    { label: "Alerts",            value: totalAlerts || "✓",                     sub: totalAlerts ? "regressions detected" : "all passing", accent: totalAlerts > 0 },
+  ].map(k => `
+    <div class="kpi-card">
+      <span class="kpi-label">${esc(k.label)}</span>
+      <span class="kpi-value" style="${k.accent ? "color:var(--danger)" : ""}">${esc(String(k.value))}</span>
+      <span class="kpi-label">${esc(k.sub)}</span>
+    </div>
   `).join("");
 }
 
-function renderScopeCards() {
-  const benchmark = getLatestBenchmark();
-  if (!benchmark) {
-    els.scopeCard.innerHTML = `<p class="empty-state">No scope metadata available.</p>`;
-    els.integrityCard.innerHTML = "";
-    return;
-  }
-
-  els.scopeCard.innerHTML = `
-    <p class="eyebrow">Benchmark Scope</p>
-    <h2>${escapeHtml(benchmark.public_name)}</h2>
-    <div class="scope-stack">
-      ${scopeLine("Time range", `${benchmark.window.start} -> ${benchmark.window.end}`)}
-      ${scopeLine("Primary timeframe", benchmark.timeframes.primary)}
-      ${scopeLine("Upper timeframe", benchmark.timeframes.upper)}
-      ${scopeLine("Config hint", benchmark.config_path_hint)}
-      ${scopeList("Symbols", benchmark.symbol_scope.symbols)}
-    </div>
-  `;
-
+// ── Header status pill ────────────────────────────────────────────────────────
+function renderHeaderStatus() {
+  const el = document.getElementById("header-status");
+  if (!el) return;
   const latestRun = getLatestRun();
-  els.integrityCard.innerHTML = `
-    <p class="eyebrow">Reproducibility</p>
-    <h2>Sanitized traceability</h2>
-    <div class="scope-stack">
-      ${scopeLine("Repo commit", latestRun?.repo?.short_commit || "unknown")}
-      ${scopeLine("Branch", latestRun?.repo?.branch || "unknown")}
-      ${scopeLine("Baseline source", state.history?.reference?.baseline_source || "n/a")}
-      ${scopeLine("Baseline commit", state.history?.reference?.baseline_commit || "not tagged")}
-      ${scopeLine("PnL tolerance", formatNumber(state.history?.reference?.pnl_tolerance, 2))}
-    </div>
-    <p class="scope-body">Exact parameters stay private. The dashboard only exposes hashes, fixed window/symbol scope, and aggregate outcomes.</p>
+  const overall = latestRun?.suite_status?.overall_status ?? "unknown";
+  const colors = { pass: "var(--good)", alert: "var(--danger)", demo: "var(--warn)", unknown: "var(--ink-muted)" };
+  const color = colors[overall] ?? colors.unknown;
+  el.innerHTML = `
+    <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;"></span>
+    <span>${esc(overall === "pass" ? "All passing" : overall === "alert" ? "Regression detected" : overall)}</span>
   `;
 }
 
-function renderRuntimeChart() {
-  const benchmark = getLatestBenchmark();
-  const series = benchmarkSeries((source) => source.elapsed_sec);
-  const band = benchmark?.history_summary || {};
-  els.runtimeNote.textContent = band.status === "ready"
-    ? `Median ${formatNumber(band.median_sec, 2)}s, alert above ${formatNumber(band.upper_bound_sec, 2)}s across ${band.sample_size} comparable runs.`
-    : "Needs at least 5 comparable runs before the runtime alert band becomes statistically meaningful.";
+// ── Aggregate charts (all strategies, all runs) ───────────────────────────────
+function renderAggCharts(stratGroups) {
+  const runs = getRuns();
 
-  const traces = [
-    {
-      type: "scatter",
-      mode: "lines+markers",
-      x: series.map((item) => item.date),
-      y: series.map((item) => item.value),
-      customdata: series.map((item) => [item.commit, item.window, item.symbolLabel]),
-      line: { color: cssVar("--accent"), width: 3 },
-      marker: { color: cssVar("--accent"), size: 8 },
-      hovertemplate:
-        "<b>%{x}</b><br>Runtime: %{y:.2f}s<br>Commit: %{customdata[0]}<br>Window: %{customdata[1]}<br>Scope: %{customdata[2]}<extra></extra>",
-      name: "Runtime",
-    },
-  ];
+  // One trace per strategy — runtime line chart
+  const rtTraces = stratGroups.map((grp, i) => {
+    const colour = cssVar(PALETTE[i % PALETTE.length]);
+    const xs = [], ys = [];
+    for (const run of runs) {
+      // sum elapsed for all benchmarks belonging to this strategy
+      const sum = (run.benchmarks ?? [])
+        .filter(b => strategyNicknameOf(b) === grp.nickname)
+        .reduce((acc, b) => acc + (b.summary?.elapsed_sec ?? 0), 0);
+      if (sum > 0) { xs.push(run.date); ys.push(sum); }
+    }
+    return { type: "scatter", mode: "lines+markers", name: grp.public_name, x: xs, y: ys,
+      line: { color: colour, width: 2.5 }, marker: { color: colour, size: 6 },
+      hovertemplate: `<b>${esc(grp.public_name)}</b><br>%{x}: %{y:.2f}s<extra></extra>` };
+  });
 
-  if (typeof band.upper_bound_sec === "number") {
-    traces.push(horizontalBandTrace(series, band.upper_bound_sec, "Alert band", cssVar("--danger"), "dash"));
-  }
-  if (typeof band.median_sec === "number") {
-    traces.push(horizontalBandTrace(series, band.median_sec, "Median", cssVar("--muted"), "dot"));
-  }
+  plot("agg-runtime-chart", rtTraces, { yaxis: { title: "Total seconds" } });
+  document.getElementById("agg-runtime-note").textContent = "Sum of all benchmark runtimes per run date across each strategy.";
 
-  plot("runtime-chart", traces, { yaxis: { title: "Seconds" } });
+  // One trace per strategy — net PnL bar chart (grouped)
+  const pnlTraces = stratGroups.map((grp, i) => {
+    const colour = cssVar(PALETTE[i % PALETTE.length]);
+    const xs = [], ys = [];
+    for (const run of runs) {
+      const sum = (run.benchmarks ?? [])
+        .filter(b => strategyNicknameOf(b) === grp.nickname)
+        .reduce((acc, b) => acc + (b.summary?.net_pnl_dollars ?? 0), 0);
+      xs.push(run.date); ys.push(sum);
+    }
+    return { type: "bar", name: grp.public_name, x: xs, y: ys,
+      marker: { color: colour, opacity: 0.8 },
+      hovertemplate: `<b>${esc(grp.public_name)}</b><br>%{x}: %{y:$,.2f}<extra></extra>` };
+  });
+
+  plot("agg-pnl-chart", pnlTraces, { barmode: "group", yaxis: { title: "USD" } });
+  document.getElementById("agg-pnl-note").textContent = "Aggregate net PnL across all monthly benchmarks per strategy per run.";
 }
 
-function renderMetricChart() {
-  const series = benchmarkSeries((source) => source[state.metric]);
-  els.metricNote.textContent = state.symbol === "ALL"
-    ? "Aggregate benchmark trend across the fixed symbol basket."
-    : `Per-symbol trend for ${state.symbol}.`;
-  plot("metric-chart", [
-    {
-      type: "scatter",
-      mode: "lines+markers",
-      x: series.map((item) => item.date),
-      y: series.map((item) => item.value),
-      customdata: series.map((item) => [item.commit, item.valueLabel]),
-      line: { color: cssVar("--accent"), width: 3 },
-      marker: { color: cssVar("--accent"), size: 8 },
-      hovertemplate:
-        "<b>%{x}</b><br>Value: %{customdata[1]}<br>Commit: %{customdata[0]}<extra></extra>",
-      name: metricLabel(state.metric),
-    },
-  ], { yaxis: { title: metricAxisLabel(state.metric) } });
-}
-
-function renderDailyChart() {
-  const benchmark = getLatestBenchmark();
-  const source = getSelectedSource(benchmark);
-  const daily = source?.daily || [];
-  els.dailyNote.textContent = state.symbol === "ALL"
-    ? "Aggregate exit-day PnL across the benchmark scope."
-    : `Exit-day realized PnL for ${state.symbol}.`;
-
-  plot("daily-chart", [
-    {
-      type: "bar",
-      x: daily.map((item) => item.day),
-      y: daily.map((item) => item.net_pnl_dollars),
-      marker: {
-        color: daily.map((item) => item.net_pnl_dollars >= 0 ? cssVar("--accent") : cssVar("--danger")),
-      },
-      customdata: daily.map((item) => [item.trade_count]),
-      hovertemplate:
-        "<b>%{x}</b><br>Net PnL: %{y:$,.2f}<br>Trades: %{customdata[0]}<extra></extra>",
-      name: "Daily PnL",
-    },
-  ], { yaxis: { title: "USD" } });
-}
-
-function renderSymbolTable() {
-  const benchmark = getLatestBenchmark();
-  const breaches = new Map((benchmark?.baseline?.symbol_breaches || []).map((item) => [item.symbol, item]));
-  const rows = benchmark?.symbols || [];
-  els.symbolTableBody.innerHTML = rows.map((row) => {
-    const breach = breaches.get(row.symbol);
-    const baselineLabel = breach ? `drift ${formatSignedNumber(breach.pnl_delta || 0, 2)}` : "match";
-    return `
-      <tr>
-        <td><strong>${escapeHtml(row.symbol)}</strong></td>
-        <td>${formatNumber(row.summary.elapsed_sec, 2)}s</td>
-        <td>${formatNumber(row.summary.rows_per_sec, 2)}</td>
-        <td>${row.summary.trade_count}</td>
-        <td>${formatNumber(row.summary.win_rate_pct, 2)}%</td>
-        <td>${currency.format(row.summary.net_pnl_dollars || 0)}</td>
-        <td><span class="pill ${breach ? "alert" : "pass"}">${escapeHtml(baselineLabel)}</span></td>
-        <td>${escapeHtml((row.summary.result_fingerprint || "").slice(0, 10))}</td>
-      </tr>
-    `;
+function renderAggLegend(stratGroups) {
+  const el = document.getElementById("agg-legend");
+  if (!el) return;
+  el.innerHTML = stratGroups.map((grp, i) => {
+    const colour = cssVar(PALETTE[i % PALETTE.length]);
+    return `<span class="legend-chip"><span class="legend-dot" style="background:${colour}"></span>${esc(grp.public_name)}</span>`;
   }).join("");
 }
 
-function renderAlerts() {
-  const latestRun = getLatestRun();
-  const cards = [];
-  for (const benchmark of latestRun?.benchmarks || []) {
-    if (benchmark.status.profitability === "fail") {
-      cards.push({
-        title: `${benchmark.public_name}: profitability drift`,
-        body: `${benchmark.baseline.symbol_breaches.length || 0} symbol-level breach(es) against the fixed regression baseline.`,
-        kind: "alert",
-      });
-    }
-    if (benchmark.status.speed === "alert") {
-      cards.push({
-        title: `${benchmark.public_name}: runtime anomaly`,
-        body: "Latest runtime is above the tracked upper runtime band for the same scope and inputs.",
-        kind: "warn",
-      });
-    }
-    if (benchmark.status.fingerprint === "changed") {
-      cards.push({
-        title: `${benchmark.public_name}: result fingerprint changed`,
-        body: benchmark.status.input_changed_since_last_real_run
-          ? "Result hash changed together with the sanitized input fingerprint, so this looks more like input drift."
-          : "Result hash changed while sanitized input fingerprint stayed stable, which is a stronger regression signal.",
-        kind: benchmark.status.input_changed_since_last_real_run ? "warn" : "alert",
-      });
-    }
-  }
+// ── Tabs ───────────────────────────────────────────────────────────────────────
+function renderTabs(stratGroups) {
+  const bar = document.getElementById("tabs-bar");
+  const panes = document.getElementById("tab-panes");
+  if (!bar || !panes) return;
 
-  if (!cards.length) {
-    cards.push({
-      title: "No active regression alerts",
-      body: "Latest run is within the tracked profitability and runtime expectations for every monitored strategy.",
-      kind: "pass",
+  bar.innerHTML = stratGroups.map(grp => {
+    const latestRun = getLatestRun();
+    const benchmarks = (latestRun?.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname);
+    const alertCount = benchmarks.filter(b => b.status?.profitability === "fail" || b.status?.speed === "alert").length;
+    const badge = alertCount > 0
+      ? `<span class="tab-badge">${alertCount}</span>`
+      : `<span class="tab-badge ok">✓</span>`;
+    const active = grp.nickname === state.activeTab ? "active" : "";
+    return `<button class="tab-btn ${active}" role="tab" data-tab="${esc(grp.nickname)}">${esc(grp.public_name)}${badge}</button>`;
+  }).join("");
+
+  panes.innerHTML = stratGroups.map(grp => {
+    const active = grp.nickname === state.activeTab ? "active" : "";
+    return `<div class="tab-pane ${active}" id="pane-${esc(grp.nickname)}"></div>`;
+  }).join("");
+
+  bar.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.activeTab = btn.dataset.tab;
+      bar.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b === btn));
+      panes.querySelectorAll(".tab-pane").forEach(p => p.classList.toggle("active", p.id === `pane-${btn.dataset.tab}`));
+      renderTabPane(state.activeTab, stratGroups);
     });
-  }
+  });
 
-  els.alertsList.innerHTML = cards.map((card) => `
-    <article class="alert-card ${card.kind}">
-      <h3>${escapeHtml(card.title)}</h3>
-      <p>${escapeHtml(card.body)}</p>
+  if (state.activeTab) renderTabPane(state.activeTab, stratGroups);
+}
+
+// ── Single tab pane ────────────────────────────────────────────────────────────
+function renderTabPane(nickname, stratGroups) {
+  const pane = document.getElementById(`pane-${nickname}`);
+  if (!pane) return;
+  const grp = stratGroups.find(g => g.nickname === nickname);
+  if (!grp) return;
+
+  const latestRun = getLatestRun();
+  const benchmarks = (latestRun?.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname);
+
+  // Aggregate stats for this strategy across ALL benchmarks (all months)
+  const totalTrades = benchmarks.reduce((a,b) => a + (b.summary?.trade_count ?? 0), 0);
+  const totalWins   = benchmarks.reduce((a,b) => a + (b.summary?.wins ?? 0), 0);
+  const totalPnl    = benchmarks.reduce((a,b) => a + (b.summary?.net_pnl_dollars ?? 0), 0);
+  const totalElapsed = benchmarks.reduce((a,b) => a + (b.summary?.elapsed_sec ?? 0), 0);
+  const winRate     = totalTrades > 0 ? (totalWins / totalTrades * 100) : 0;
+  const alertCount  = benchmarks.filter(b => b.status?.profitability === "fail" || b.status?.speed === "alert").length;
+
+  pane.innerHTML = `
+    <!-- Aggregate stat row -->
+    <div class="stat-row">
+      ${statCard("Total trades", totalTrades, "")}
+      ${statCard("Win rate", fmt(winRate, 1) + "%", "across all months & symbols")}
+      ${statCard("Net PnL", currency.format(totalPnl), "all months combined", totalPnl >= 0 ? "var(--good)" : "var(--danger)")}
+      ${statCard("Runtime", fmt(totalElapsed, 1) + "s", "total across benchmarks")}
+      ${statCard("Alerts", alertCount || "✓", alertCount ? "regressions" : "all passing", alertCount > 0 ? "var(--danger)" : "var(--good)")}
+    </div>
+
+    <!-- Alerts -->
+    <div class="alerts-list" id="alerts-${esc(nickname)}"></div>
+
+    <!-- Month-by-month view -->
+    <div class="month-grid-wrap">
+      <p class="eyebrow">Month-by-month breakdown</p>
+      <div class="month-grid" id="months-${esc(nickname)}"></div>
+    </div>
+
+    <!-- Scope & reproducibility -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="panel" style="padding:18px" id="scope-${esc(nickname)}"></div>
+      <div class="panel" style="padding:18px" id="integrity-${esc(nickname)}"></div>
+    </div>
+  `;
+
+  renderPaneAlerts(nickname, benchmarks);
+  renderPaneMonths(nickname, benchmarks);
+  renderPaneScope(nickname, benchmarks[0] ?? null);
+  renderPaneIntegrity(nickname, latestRun);
+}
+
+function statCard(label, value, meta, color = "") {
+  return `<div class="stat-card">
+    <span class="eyebrow">${esc(label)}</span>
+    <span class="stat-val" style="${color ? "color:" + color : ""}">${esc(String(value))}</span>
+    <span class="stat-meta">${esc(meta)}</span>
+  </div>`;
+}
+
+// ── Per-pane: alerts ──────────────────────────────────────────────────────────
+function renderPaneAlerts(nickname, benchmarks) {
+  const el = document.getElementById(`alerts-${nickname}`);
+  if (!el) return;
+  const cards = [];
+  for (const b of benchmarks) {
+    const label = b.window ? `${b.window.start} → ${b.window.end}` : b.public_name;
+    if (b.status?.profitability === "fail") {
+      cards.push({ kind: "alert", title: `${label}: profitability drift`, body: `${b.baseline?.symbol_breaches?.length ?? 0} symbol breach(es) against regression baseline.` });
+    }
+    if (b.status?.speed === "alert") {
+      cards.push({ kind: "warn", title: `${label}: runtime anomaly`, body: "Latest runtime exceeds the tracked upper runtime band." });
+    }
+    if (b.status?.fingerprint === "changed") {
+      cards.push({ kind: b.status.input_changed_since_last_real_run ? "warn" : "alert",
+        title: `${label}: result fingerprint changed`,
+        body: b.status.input_changed_since_last_real_run ? "Fingerprint changed with input — looks like input drift." : "Fingerprint changed with stable inputs — stronger regression signal." });
+    }
+  }
+  if (!cards.length) {
+    cards.push({ kind: "pass", title: "No active regression alerts", body: "All benchmarks for this strategy are within expected bounds." });
+  }
+  el.innerHTML = cards.map(c => `
+    <article class="alert-card ${c.kind}">
+      <h3>${esc(c.title)}</h3>
+      <p>${esc(c.body)}</p>
     </article>
   `).join("");
 }
 
-function renderFooter() {
-  const latestRun = getLatestRun();
-  els.footerCopy.textContent =
-    `Generated ${state.history?.generated_at || "n/a"} / latest real commit ${latestRun?.repo?.short_commit || "unknown"} / baseline ${state.history?.reference?.baseline_commit || "not tagged"} / public output contains hashes and aggregates only.`;
-}
+// ── Per-pane: month grid ───────────────────────────────────────────────────────
+function renderPaneMonths(nickname, benchmarks) {
+  const el = document.getElementById(`months-${nickname}`);
+  if (!el) return;
 
-function benchmarkSeries(valueSelector) {
-  return getRuns().map((run) => {
-    const benchmark = getBenchmark(run);
-    const source = getSelectedSource(benchmark);
-    const value = source ? valueSelector(source) : null;
-    return {
-      date: run.date,
-      value,
-      commit: run.repo?.short_commit || "unknown",
-      window: benchmark ? `${benchmark.window.start} -> ${benchmark.window.end}` : "n/a",
-      symbolLabel: state.symbol === "ALL" ? (benchmark?.symbol_scope?.symbols || []).join(", ") : state.symbol,
-      valueLabel: formatMetricValue(state.metric)(value),
-    };
-  }).filter((item) => item.value !== null && item.value !== undefined);
-}
+  // compute max |pnl| for bar-width scaling
+  const maxAbsPnl = Math.max(1, ...benchmarks.map(b => Math.abs(b.summary?.net_pnl_dollars ?? 0)));
 
-function getRuns() {
-  return state.history?.runs || [];
-}
+  el.innerHTML = benchmarks.map((b, idx) => {
+    const pnl = b.summary?.net_pnl_dollars ?? 0;
+    const pct = Math.min(100, Math.abs(pnl) / maxAbsPnl * 100);
+    const barColor = pnl >= 0 ? "var(--good)" : "var(--danger)";
+    const alertBadge = (b.status?.profitability === "fail" || b.status?.speed === "alert")
+      ? `<span class="pill alert" style="margin-left:8px;font-size:.7rem">alert</span>` : "";
+    const label = b.window ? `${b.window.start.slice(0,7)}` : b.public_name;
 
-function getLatestRun() {
-  const runs = getRuns();
-  return runs[runs.length - 1] || null;
-}
+    return `
+      <div class="month-card" id="mc-${esc(nickname)}-${idx}" data-idx="${idx}" data-nick="${esc(nickname)}">
+        <span class="month-label">${esc(label)}${alertBadge}</span>
+        <div class="month-bars"><div class="month-bars-fill" style="width:${pct}%;background:${barColor}"></div></div>
+        <span class="month-pnl" style="color:${barColor}">${currency.format(pnl)}</span>
+      </div>
+      <div class="month-detail" id="md-${esc(nickname)}-${idx}">
+        ${buildSymbolTable(b)}
+      </div>
+    `;
+  }).join("");
 
-function getBenchmark(run, benchmarkId = state.benchmarkId) {
-  return run?.benchmarks?.find((item) => item.id === benchmarkId) || null;
-}
-
-function getLatestBenchmark() {
-  return getBenchmark(getLatestRun());
-}
-
-function getSelectedSource(benchmark) {
-  if (!benchmark) {
-    return null;
-  }
-  if (state.symbol === "ALL") {
-    return benchmark.summary;
-  }
-  return benchmark.symbols.find((item) => item.symbol === state.symbol)?.summary || null;
-}
-
-function plot(id, traces, extraLayout = {}) {
-  const layout = {
-    paper_bgcolor: cssVar("--plot-paper"),
-    plot_bgcolor: cssVar("--plot-paper"),
-    margin: { t: 16, r: 16, b: 44, l: 58 },
-    hovermode: "x unified",
-    font: { color: cssVar("--ink"), family: "Segoe UI, Arial, sans-serif" },
-    xaxis: {
-      gridcolor: cssVar("--plot-grid"),
-      linecolor: cssVar("--plot-grid"),
-      tickfont: { color: cssVar("--muted") },
-    },
-    yaxis: {
-      gridcolor: cssVar("--plot-grid"),
-      zerolinecolor: cssVar("--plot-grid"),
-      tickfont: { color: cssVar("--muted") },
-    },
-    legend: { orientation: "h", x: 0, y: 1.16, font: { color: cssVar("--muted") } },
-    ...extraLayout,
-  };
-  Plotly.react(id, traces, layout, {
-    responsive: true,
-    displaylogo: false,
-    modeBarButtonsToRemove: ["lasso2d", "select2d"],
+  el.querySelectorAll(".month-card").forEach(card => {
+    card.addEventListener("click", () => {
+      const idx = card.dataset.idx;
+      const detail = document.getElementById(`md-${nickname}-${idx}`);
+      detail.classList.toggle("open");
+      card.classList.toggle("expanded");
+    });
   });
 }
 
-function horizontalBandTrace(series, value, name, color, dash) {
-  return {
-    type: "scatter",
-    mode: "lines",
-    x: series.map((item) => item.date),
-    y: series.map(() => value),
-    line: { color, width: 2, dash },
-    hovertemplate: `<b>${escapeHtml(name)}</b><br>${value.toFixed(2)}<extra></extra>`,
-    name,
-  };
+function buildSymbolTable(benchmark) {
+  const rows = benchmark.symbols ?? [];
+  const breaches = new Map((benchmark.baseline?.symbol_breaches ?? []).map(s => [s.symbol, s]));
+  if (!rows.length) return `<p class="empty-state" style="padding:12px">No per-symbol data.</p>`;
+  return `<div class="table-wrap"><table>
+    <thead><tr>
+      <th>Symbol</th><th>Trades</th><th>Win rate</th><th>Net PnL</th><th>Runtime</th><th>Baseline</th><th>Fingerprint</th>
+    </tr></thead>
+    <tbody>${rows.map(row => {
+      const s = row.summary ?? {};
+      const breach = breaches.get(row.symbol);
+      const baseLabel = breach ? `drift ${fmtS(breach.pnl_delta, 2)}` : "match";
+      return `<tr>
+        <td><strong>${esc(row.symbol)}</strong></td>
+        <td>${s.trade_count ?? 0}</td>
+        <td>${fmt(s.win_rate_pct, 1)}%</td>
+        <td style="color:${(s.net_pnl_dollars ?? 0) >= 0 ? "var(--good)" : "var(--danger)"}">${currency.format(s.net_pnl_dollars ?? 0)}</td>
+        <td>${fmt(s.elapsed_sec, 2)}s</td>
+        <td><span class="pill ${breach ? "alert" : "pass"}">${esc(baseLabel)}</span></td>
+        <td style="font-family:monospace;font-size:0.8rem;color:var(--ink-muted)">${esc((s.result_fingerprint ?? "").slice(0,10))}</td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table></div>`;
 }
 
-function applyTheme(theme) {
-  document.body.dataset.theme = theme;
+// ── Per-pane: scope card ───────────────────────────────────────────────────────
+function renderPaneScope(nickname, benchmark) {
+  const el = document.getElementById(`scope-${nickname}`);
+  if (!el || !benchmark) return;
+  const sym = benchmark.symbol_scope?.symbols ?? [];
+  el.innerHTML = `
+    <p class="eyebrow">Benchmark scope</p>
+    <h3>${esc(benchmark.public_name ?? nickname)}</h3>
+    <div class="scope-stack" style="margin-top:12px">
+      ${scopeLine("Config", benchmark.config_path_hint ?? "n/a")}
+      ${scopeLine("Primary TF", benchmark.timeframes?.primary ?? "n/a")}
+      ${scopeLine("Upper TF", benchmark.timeframes?.upper ?? "n/a")}
+      <div class="scope-line" style="flex-direction:column;gap:8px">
+        <span class="scope-label">Symbol basket</span>
+        <div class="scope-list-value">${sym.map(s => `<span class="chip">${esc(s)}</span>`).join("")}</div>
+      </div>
+    </div>
+  `;
 }
 
-function cssVar(name) {
-  return getComputedStyle(document.body).getPropertyValue(name).trim();
+// ── Per-pane: integrity card ───────────────────────────────────────────────────
+function renderPaneIntegrity(nickname, run) {
+  const el = document.getElementById(`integrity-${nickname}`);
+  if (!el) return;
+  const ref = state.history?.reference ?? {};
+  el.innerHTML = `
+    <p class="eyebrow">Reproducibility</p>
+    <h3>Sanitized traceability</h3>
+    <div class="scope-stack" style="margin-top:12px">
+      ${scopeLine("Repo commit", run?.repo?.short_commit ?? "unknown")}
+      ${scopeLine("Branch", run?.repo?.branch ?? "unknown")}
+      ${scopeLine("Baseline source", ref.baseline_source ?? "n/a")}
+      ${scopeLine("Baseline commit", ref.baseline_commit ?? "not tagged")}
+      ${scopeLine("PnL tolerance", fmt(ref.pnl_tolerance, 2))}
+    </div>
+    <p style="font-size:.82rem;color:var(--ink-muted);margin-top:12px">
+      Exact parameters stay private. The dashboard only exposes hashes, fixed window/symbol scope, and aggregate outcomes.
+    </p>
+  `;
 }
 
 function scopeLine(label, value) {
-  return `
-    <div class="scope-line">
-      <span class="scope-label">${escapeHtml(label)}</span>
-      <strong>${escapeHtml(value)}</strong>
-    </div>
-  `;
+  return `<div class="scope-line"><span class="scope-label">${esc(label)}</span><strong>${esc(value)}</strong></div>`;
 }
 
-function scopeList(label, values) {
-  return `
-    <div class="scope-line">
-      <span class="scope-list-label">${escapeHtml(label)}</span>
-      <div class="scope-list-value">${values.map((value) => `<span class="chip">${escapeHtml(value)}</span>`).join("")}</div>
-    </div>
-  `;
-}
-
-function pillClass(status) {
-  if (status === "fail" || status === "alert" || status === "changed") return "alert";
-  if (status === "warn" || status === "insufficient_history") return "warn";
-  return "pass";
-}
-
-function speedLabel(status) {
-  if (status === "alert") return "runtime alert";
-  if (status === "insufficient_history") return "tracking";
-  return "stable";
-}
-
-function metricLabel(metric) {
-  return {
-    net_pnl_dollars: "PnL stability",
-    win_rate_pct: "Win rate stability",
-    trade_count: "Trade count stability",
-    profit_factor: "Profit factor stability",
-  }[metric] || metric;
-}
-
-function metricAxisLabel(metric) {
-  return {
-    net_pnl_dollars: "USD",
-    win_rate_pct: "Percent",
-    trade_count: "Trades",
-    profit_factor: "Factor",
-  }[metric] || metric;
-}
-
-function formatMetricValue(metric) {
-  return (value) => {
-    if (metric === "net_pnl_dollars") return currency.format(value || 0);
-    if (metric === "win_rate_pct") return `${formatNumber(value, 2)}%`;
-    return formatNumber(value, 2);
-  };
-}
-
-function formatNumber(value, digits = 2) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "n/a";
-  return Number(value).toFixed(digits);
-}
-
-function formatSignedNumber(value, digits = 2) {
-  if (value === null || value === undefined || Number.isNaN(value)) return "n/a";
-  return `${value >= 0 ? "+" : ""}${Number(value).toFixed(digits)}`;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function debounce(fn, delay) {
-  let timeout = null;
-  return () => {
-    window.clearTimeout(timeout);
-    timeout = window.setTimeout(fn, delay);
-  };
+// ── Footer ────────────────────────────────────────────────────────────────────
+function renderFooter() {
+  const el = document.getElementById("footer-copy");
+  if (!el) return;
+  const r = getLatestRun();
+  const ref = state.history?.reference ?? {};
+  el.textContent = `Generated ${state.history?.generated_at ?? "n/a"} · commit ${r?.repo?.short_commit ?? "unknown"} · baseline ${ref.baseline_commit ?? "not tagged"} · public output contains hashes and aggregates only`;
 }
