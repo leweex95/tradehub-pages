@@ -1,307 +1,133 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TradeHub — Strategy Research Platform</title>
-<style>
-  :root {
-    --bg: #06060f;
-    --bg2: #0d0d1e;
-    --card: #10102a;
-    --card2: #131330;
-    --border: #1a1a3a;
-    --accent: #00d4ff;
-    --gold: #ffd700;
-    --green: #00e676;
-    --red: #ff5252;
-    --text: #e0e0f0;
-    --muted: #6060a0;
-    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* ── Animated background ──────────────────────────── */
-  .bg-grid {
-    position: fixed; inset: 0; z-index: 0;
-    background-image:
-      linear-gradient(var(--border) 1px, transparent 1px),
-      linear-gradient(90deg, var(--border) 1px, transparent 1px);
-    background-size: 60px 60px;
-    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%);
-    opacity: 0.35;
-  }
-  .bg-glow {
-    position: fixed; z-index: 0;
-    border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.15;
-    pointer-events: none;
-  }
-  .glow-1 { width: 600px; height: 600px; background: #00d4ff;
-             top: -100px; left: -200px; }
-  .glow-2 { width: 500px; height: 500px; background: #7c3aed;
-             bottom: -100px; right: -150px; }
-  .glow-3 { width: 400px; height: 400px; background: #ffd700;
-             top: 50%; left: 50%; transform: translate(-50%,-50%); }
-
-  /* ── Layout ──────────────────────────────────────── */
-  .page { position: relative; z-index: 1; display: flex; flex-direction: column;
-          min-height: 100vh; }
-
-  /* ── Nav ─────────────────────────────────────────── */
-  nav {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 20px 48px; border-bottom: 1px solid var(--border);
-    background: rgba(6,6,15,0.8); backdrop-filter: blur(10px);
-    position: sticky; top: 0; z-index: 100;
-  }
-  .nav-logo { font-size: 1.5rem; font-weight: 800;
-              background: linear-gradient(90deg, var(--accent), var(--gold));
-              -webkit-background-clip: text;
-              -webkit-text-fill-color: transparent;
-              background-clip: text; }
-  .nav-links { display: flex; gap: 24px; align-items: center; }
-  .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px;
-                 transition: color .2s; }
-  .nav-links a:hover { color: var(--text); }
-  .nav-tag { padding: 4px 10px; border-radius: 20px; font-size: 11px;
-             font-weight: 700; letter-spacing: 1px;
-             background: #00d4ff15; color: var(--accent);
-             border: 1px solid #00d4ff30; }
-
-  /* ── Hero ────────────────────────────────────────── */
-  .hero {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 80px 24px 60px; text-align: center;
-  }
-  .hero-eyebrow {
-    font-size: 12px; letter-spacing: 3px; text-transform: uppercase;
-    color: var(--accent); margin-bottom: 20px; font-weight: 600;
-  }
-  .hero-title {
-    font-size: clamp(2.5rem, 7vw, 5rem);
-    font-weight: 900; line-height: 1.05;
-    letter-spacing: -2px; margin-bottom: 24px;
-    max-width: 800px;
-  }
-  .hero-title .t1 { color: var(--text); }
-  .hero-title .t2 {
-    background: linear-gradient(90deg, var(--accent) 0%, #7c3aed 50%, var(--gold) 100%);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .hero-sub {
-    font-size: 1.1rem; color: var(--muted); max-width: 560px; line-height: 1.7;
-    margin-bottom: 56px;
-  }
-
-  /* ── Panel cards ─────────────────────────────────── */
-  .panels {
-    display: grid; gap: 24px; width: 100%; max-width: 960px;
-    grid-template-columns: 1fr;
-  }
-  @media(min-width: 700px) { .panels { grid-template-columns: 1fr 1fr; } }
-
-  .panel {
-    position: relative; overflow: hidden;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px; padding: 40px 36px;
-    text-decoration: none; color: inherit;
-    cursor: pointer;
-    transition: transform .3s cubic-bezier(.4,0,.2,1),
-                box-shadow .3s, border-color .3s;
-    display: flex; flex-direction: column; gap: 16px;
-  }
-  .panel:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 24px 48px #000a;
-  }
-  .panel-bt:hover { border-color: var(--accent);
-    box-shadow: 0 24px 48px #0004, 0 0 0 1px var(--accent)40; }
-  .panel-ft:hover { border-color: var(--gold);
-    box-shadow: 0 24px 48px #0004, 0 0 0 1px var(--gold)40; }
-
-  /* Shimmer */
-  .panel::after {
-    content: ''; position: absolute;
-    inset: 0; border-radius: 20px;
-    background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.03) 100%);
-    pointer-events: none;
-  }
-
-  /* Icon */
-  .panel-icon {
-    width: 56px; height: 56px; border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.8rem;
-  }
-  .panel-bt .panel-icon { background: #00d4ff15; }
-  .panel-ft .panel-icon { background: #ffd70015; }
-
-  .panel-label {
-    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
-    font-weight: 700;
-  }
-  .panel-bt .panel-label { color: var(--accent); }
-  .panel-ft .panel-label { color: var(--gold); }
-
-  .panel-title { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px; }
-  .panel-desc { font-size: 14px; color: var(--muted); line-height: 1.7; }
-
-  .panel-features { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
-  .panel-feature {
-    display: flex; align-items: center; gap: 10px;
-    font-size: 13px; color: #9090c0;
-  }
-  .panel-feature::before { content: '✓'; font-weight: 700; }
-  .panel-bt .panel-feature::before { color: var(--accent); }
-  .panel-ft .panel-feature::before { color: var(--gold); }
-
-  .panel-cta {
-    margin-top: auto; padding-top: 20px;
-    display: flex; align-items: center; gap: 10px;
-    font-size: 15px; font-weight: 700;
-  }
-  .panel-bt .panel-cta { color: var(--accent); }
-  .panel-ft .panel-cta { color: var(--gold); }
-  .panel-cta-arrow { font-size: 1.2rem; transition: transform .2s; }
-  .panel:hover .panel-cta-arrow { transform: translateX(4px); }
-
-  /* ── Stats strip ─────────────────────────────────── */
-  .stats-strip {
-    display: flex; gap: 0; border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-    background: var(--card); width: 100%; justify-content: center;
-    flex-wrap: wrap;
-  }
-  .stat-item {
-    padding: 24px 40px; border-right: 1px solid var(--border);
-    text-align: center; flex: 1; min-width: 160px;
-  }
-  .stat-item:last-child { border-right: none; }
-  .stat-val { font-size: 1.8rem; font-weight: 800; }
-  .stat-lbl { font-size: 11px; color: var(--muted); text-transform: uppercase;
-              letter-spacing: 1px; margin-top: 4px; }
-
-  /* ── Footer ──────────────────────────────────────── */
-  footer {
-    text-align: center; padding: 28px 24px;
-    color: var(--muted); font-size: 12px;
-    border-top: 1px solid var(--border);
-  }
-  footer a { color: var(--muted); }
-  footer a:hover { color: var(--accent); }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TradeHub Reports</title>
+  <style>
+    :root {
+      --bg: #f8fbff;
+      --panel: #ffffff;
+      --ink: #1d2a38;
+      --ink-subtle: #5a6d82;
+      --line: #d7e3ef;
+      --accent: #0d6efd;
+      --accent-soft: #e8f1ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 0% 0%, #e8f2ff 0, transparent 50%),
+        radial-gradient(circle at 100% 100%, #eef7ee 0, transparent 45%),
+        var(--bg);
+      line-height: 1.5;
+    }
+    .page {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+    .header {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.9rem;
+      color: #0b4ea2;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 1.3rem;
+    }
+    h3 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+    }
+    p { margin: 0.35rem 0; }
+    a {
+      color: #0a4f9d;
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+    .meta {
+      display: block;
+      color: var(--ink-subtle);
+      font-size: 0.92rem;
+    }
+    section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .latest-card {
+      background: var(--accent-soft);
+      border: 1px solid #c7ddff;
+      border-radius: 10px;
+      padding: 12px;
+    }
+    .report-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .report-list li {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 0;
+    }
+    .report-list li:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+    .empty {
+      color: var(--ink-subtle);
+    }
+    footer {
+      margin-top: 24px;
+      color: var(--ink-subtle);
+      font-size: 0.9rem;
+    }
+    code {
+      background: #eef3f8;
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-family: Consolas, "Courier New", monospace;
+    }
+  </style>
 </head>
 <body>
-<div class="bg-grid"></div>
-<div class="bg-glow glow-1"></div>
-<div class="bg-glow glow-2"></div>
-<div class="bg-glow glow-3"></div>
-
-<div class="page">
-  <nav>
-    <div class="nav-logo">TradeHub</div>
-    <div class="nav-links">
-      <a href="#panels">Dashboards</a>
-      <a href="https://github.com/leweex95/tradehub-pages" target="_blank">GitHub</a>
-      <span class="nav-tag">v2.0</span>
-    </div>
-  </nav>
-
-  <main class="hero" id="panels">
-    <div class="hero-eyebrow">Algorithmic Trading Research</div>
-    <h1 class="hero-title">
-      <span class="t1">Strategy Intelligence</span><br>
-      <span class="t2">at Your Fingertips</span>
-    </h1>
-    <p class="hero-sub">
-      Multi-strategy backtesting across 9+ forex pairs — now with
-      live forward testing on Linux VPS via Dockerised MetaTrader 5.
-    </p>
-
-    <div class="panels">
-
-      <!-- Backtester Panel -->
-      <a class="panel panel-bt" href="reports/backtest/latest/comparison_report.html">
-        <div class="panel-icon">📊</div>
-        <div class="panel-label">Historical Analysis</div>
-        <h2 class="panel-title">Backtester</h2>
-        <p class="panel-desc">
-          Deep-dive into historical performance across 3 strategy families,
-          multiple symbols, and date ranges with full trade-level detail.
-        </p>
-        <div class="panel-features">
-          <div class="panel-feature">Walk-forward optimisation</div>
-          <div class="panel-feature">Multi-symbol comparison</div>
-          <div class="panel-feature">Equity curve &amp; drawdown analysis</div>
-          <div class="panel-feature">Trade journal &amp; charts</div>
-        </div>
-        <div class="panel-cta">Open Backtester <span class="panel-cta-arrow">→</span></div>
-      </a>
-
-      <!-- Forward Testing Panel -->
-      <a class="panel panel-ft" href="forward/index.html">
-        <div class="panel-icon">⚡</div>
-        <div class="panel-label">Live Deployment</div>
-        <h2 class="panel-title">Forward Testing</h2>
-        <p class="panel-desc">
-          Real-time strategy performance on live / demo accounts.
-          Dockerised MT5 on Linux — updated every cycle from the VPS.
-        </p>
-        <div class="panel-features">
-          <div class="panel-feature">Daily &amp; weekly P&amp;L breakdown</div>
-          <div class="panel-feature">Symbol-level performance filter</div>
-          <div class="panel-feature">Live equity curve ($10k base)</div>
-          <div class="panel-feature">Trade-by-trade log with exit tags</div>
-        </div>
-        <div class="panel-cta">Open Forward Tests <span class="panel-cta-arrow">→</span></div>
-      </a>
-
-    </div>
+  <main class="page">
+    <header class="header">
+      <h1>TradeHub Reports</h1>
+      <p>Public report mirror for the private TradeHub project.</p>
+      <p>Push report HTML files to <code>reports/</code> in this repository to publish them automatically.</p>
+    </header>
+    <section>
+      <h2>Latest Report</h2>
+      <article class="latest-card"><h3><a href="reports/monitoring/latest/index.html">TradeHub Monitoring</a></h3><p class="meta">reports/monitoring/latest/index.html | 2026-03-29 20:17 UTC</p><p>Most recently updated HTML report in this repository.</p></article>
+    </section>
+    <section>
+      <h2>Latest Comparison Report</h2>
+      <p class="empty">No matching reports found yet. The section updates automatically when new HTML reports are pushed to <code>reports/</code>.</p>
+    </section>
+    <section>
+      <h2>All Reports</h2>
+      <ul class="report-list">
+<li><a href="reports/monitoring/latest/index.html">TradeHub Monitoring</a><span class="meta">reports/monitoring/latest/index.html | 2026-03-29 20:17 UTC</span></li>
+</ul>
+    </section>
+    <footer>
+      <p>Generated at 2026-03-30 21:59 UTC from commit 59b97fd.</p>
+      <p>Deployment notes: <a href="docs/deployment.md">docs/deployment.md</a></p>
+    </footer>
   </main>
-
-  <!-- Stats strip -->
-  <div class="stats-strip">
-    <div class="stat-item">
-      <div class="stat-val" style="color:var(--accent)">3</div>
-      <div class="stat-lbl">Strategies</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-val" style="color:var(--gold)">10+</div>
-      <div class="stat-lbl">Symbols</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-val" style="color:var(--green)">+234R</div>
-      <div class="stat-lbl">Best Backtest</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-val" style="color:var(--accent)">Linux</div>
-      <div class="stat-lbl">VPS Ready</div>
-    </div>
-    <div class="stat-item">
-      <div class="stat-val" style="color:var(--gold)">Docker</div>
-      <div class="stat-lbl">Containerised</div>
-    </div>
-  </div>
-
-  <footer>
-    <p>TradeHub Strategy Research Platform &nbsp;·&nbsp;
-    <a href="https://github.com/leweex95/tradehub-pages">GitHub Pages</a>
-    &nbsp;·&nbsp; Updated 2026-03-30 21:45 UTC
-    </p>
-  </footer>
-</div>
 </body>
 </html>
