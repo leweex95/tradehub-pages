@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-30T21:59:10.631235+00:00",
+  "generated_at": "2026-03-30T22:01:54.058332+00:00",
   "history_meta": {
     "run_count": 2,
     "real_run_count": 2,
@@ -1825,8 +1825,8 @@
     ]
   },
   "current_run": {
-    "run_id": "20260330T215623Z",
-    "recorded_at": "2026-03-30T21:56:23.254081+00:00",
+    "run_id": "20260330T215925Z",
+    "recorded_at": "2026-03-30T21:59:25.703085+00:00",
     "date": "2026-03-30",
     "is_synthetic": false,
     "source": "local_monitoring",
@@ -1844,7 +1844,7 @@
     "suite_status": {
       "profitability_failures": 2,
       "speed_alerts": 0,
-      "fingerprint_changes": 2,
+      "fingerprint_changes": 0,
       "overall_status": "alert"
     },
     "benchmarks": [
@@ -1884,10 +1884,10 @@
           "end": "2025-05-01"
         },
         "summary": {
-          "elapsed_sec": 51.4407,
+          "elapsed_sec": 37.7345,
           "rows_processed": 681199,
-          "rows_per_sec": 13242.41,
-          "seconds_per_symbol": 5.7156,
+          "rows_per_sec": 18052.42,
+          "seconds_per_symbol": 4.1927,
           "trade_count": 11,
           "wins": 8,
           "losses": 3,
@@ -1982,10 +1982,10 @@
                 }
               ],
               "result_fingerprint": "451d34c3b70e64efd084f02ba46a6b441ab0a1e284cbc3fe03475282081197d8",
-              "elapsed_sec": 4.4774,
+              "elapsed_sec": 3.5936,
               "rows_processed": 75775,
-              "rows_per_sec": 16924.04,
-              "seconds_per_1k_rows": 0.0591
+              "rows_per_sec": 21085.82,
+              "seconds_per_1k_rows": 0.0474
             },
             "input": {
               "primary_timeframe": {
@@ -2032,10 +2032,10 @@
                 }
               ],
               "result_fingerprint": "fa2c6d9c46ec3dac5cd9fd89c6ec225ab82ee25f4a5540c8a092e25057d4ebb1",
-              "elapsed_sec": 7.121,
+              "elapsed_sec": 3.7871,
               "rows_processed": 75772,
-              "rows_per_sec": 10640.59,
-              "seconds_per_1k_rows": 0.094
+              "rows_per_sec": 20007.76,
+              "seconds_per_1k_rows": 0.05
             },
             "input": {
               "primary_timeframe": {
@@ -2099,10 +2099,10 @@
                 }
               ],
               "result_fingerprint": "e80e1359611454d33c46dd96bfd67d34efe27363810c815a72aa458356d868bc",
-              "elapsed_sec": 7.3406,
+              "elapsed_sec": 4.8399,
               "rows_processed": 75661,
-              "rows_per_sec": 10307.25,
-              "seconds_per_1k_rows": 0.097
+              "rows_per_sec": 15632.72,
+              "seconds_per_1k_rows": 0.064
             },
             "input": {
               "primary_timeframe": {
@@ -2141,10 +2141,10 @@
               "exit_reason_counts": {},
               "daily": [],
               "result_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-              "elapsed_sec": 5.3066,
+              "elapsed_sec": 4.7834,
               "rows_processed": 75728,
-              "rows_per_sec": 14270.58,
-              "seconds_per_1k_rows": 0.0701
+              "rows_per_sec": 15831.27,
+              "seconds_per_1k_rows": 0.0632
             },
             "input": {
               "primary_timeframe": {
@@ -2183,10 +2183,10 @@
               "exit_reason_counts": {},
               "daily": [],
               "result_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-              "elapsed_sec": 5.0124,
+              "elapsed_sec": 3.8129,
               "rows_processed": 75738,
-              "rows_per_sec": 15110.21,
-              "seconds_per_1k_rows": 0.0662
+              "rows_per_sec": 19863.88,
+              "seconds_per_1k_rows": 0.0503
             },
             "input": {
               "primary_timeframe": {
@@ -2233,10 +2233,10 @@
                 }
               ],
               "result_fingerprint": "76a315d7c2d17a6fdfbb6c41702662a43fc87ef1a7b56659ab07e9817b651dd2",
-              "elapsed_sec": 5.2577,
+              "elapsed_sec": 4.6282,
               "rows_processed": 75629,
-              "rows_per_sec": 14384.44,
-              "seconds_per_1k_rows": 0.0695
+              "rows_per_sec": 16340.97,
+              "seconds_per_1k_rows": 0.0612
             },
             "input": {
               "primary_timeframe": {
@@ -2275,10 +2275,10 @@
               "exit_reason_counts": {},
               "daily": [],
               "result_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-              "elapsed_sec": 5.2918,
+              "elapsed_sec": 3.89,
               "rows_processed": 75771,
-              "rows_per_sec": 14318.47,
-              "seconds_per_1k_rows": 0.0698
+              "rows_per_sec": 19478.31,
+              "seconds_per_1k_rows": 0.0513
             },
             "input": {
               "primary_timeframe": {
@@ -2331,10 +2331,10 @@
                 }
               ],
               "result_fingerprint": "69721ecf380b17f1f210fc3297ed0f74ae5230d1f33cbec9458bce9b26476c32",
-              "elapsed_sec": 6.2976,
+              "elapsed_sec": 4.3094,
               "rows_processed": 75611,
-              "rows_per_sec": 12006.27,
-              "seconds_per_1k_rows": 0.0833
+              "rows_per_sec": 17545.54,
+              "seconds_per_1k_rows": 0.057
             },
             "input": {
               "primary_timeframe": {
@@ -2386,10 +2386,10 @@
                 }
               ],
               "result_fingerprint": "086169cc4f40e3c450ca9061a3905952cc4c5a48079685ca212cffe2e4f7f31a",
-              "elapsed_sec": 5.3356,
+              "elapsed_sec": 4.09,
               "rows_processed": 75514,
-              "rows_per_sec": 14152.78,
-              "seconds_per_1k_rows": 0.0707
+              "rows_per_sec": 18463.08,
+              "seconds_per_1k_rows": 0.0542
             },
             "input": {
               "primary_timeframe": {
@@ -2428,9 +2428,9 @@
           "pnl_tolerance": 0.02
         },
         "history_summary": {
-          "sample_size": 0,
+          "sample_size": 1,
           "status": "insufficient_history",
-          "median_sec": null,
+          "median_sec": 51.4407,
           "upper_bound_sec": null,
           "robust_sigma_sec": null,
           "z_score": null
@@ -2438,8 +2438,8 @@
         "status": {
           "profitability": "fail",
           "speed": "insufficient_history",
-          "fingerprint": "changed",
-          "input_changed_since_last_real_run": true
+          "fingerprint": "pass",
+          "input_changed_since_last_real_run": false
         }
       },
       {
@@ -2478,10 +2478,10 @@
           "end": "2025-05-01"
         },
         "summary": {
-          "elapsed_sec": 87.0725,
+          "elapsed_sec": 85.4584,
           "rows_processed": 681199,
-          "rows_per_sec": 7823.35,
-          "seconds_per_symbol": 9.6747,
+          "rows_per_sec": 7971.12,
+          "seconds_per_symbol": 9.4954,
           "trade_count": 104,
           "wins": 56,
           "losses": 48,
@@ -2770,10 +2770,10 @@
                 }
               ],
               "result_fingerprint": "691d21004177fe19d6715ff931e63634917f80cb9794e6d3dbdc540a76c8908d",
-              "elapsed_sec": 10.7488,
+              "elapsed_sec": 9.3026,
               "rows_processed": 75775,
-              "rows_per_sec": 7049.65,
-              "seconds_per_1k_rows": 0.1419
+              "rows_per_sec": 8145.56,
+              "seconds_per_1k_rows": 0.1228
             },
             "input": {
               "primary_timeframe": {
@@ -2861,10 +2861,10 @@
                 }
               ],
               "result_fingerprint": "f95bb46c934d54ab99e3dea99b5a2b6df0ec53a76a5f40599a896dd58254e102",
-              "elapsed_sec": 8.9973,
+              "elapsed_sec": 9.7807,
               "rows_processed": 75772,
-              "rows_per_sec": 8421.64,
-              "seconds_per_1k_rows": 0.1187
+              "rows_per_sec": 7747.08,
+              "seconds_per_1k_rows": 0.1291
             },
             "input": {
               "primary_timeframe": {
@@ -2969,10 +2969,10 @@
                 }
               ],
               "result_fingerprint": "f990ed396ac5661a3923ca4adbcf51152bfa3b50a9e019ee6eeec7675020ff6a",
-              "elapsed_sec": 9.6063,
+              "elapsed_sec": 10.9743,
               "rows_processed": 75661,
-              "rows_per_sec": 7876.18,
-              "seconds_per_1k_rows": 0.127
+              "rows_per_sec": 6894.36,
+              "seconds_per_1k_rows": 0.145
             },
             "input": {
               "primary_timeframe": {
@@ -3066,10 +3066,10 @@
                 }
               ],
               "result_fingerprint": "41afba736466a2cd582b203228fa83462634f54208d0d930f8fbda35f0739114",
-              "elapsed_sec": 10.1665,
+              "elapsed_sec": 9.4376,
               "rows_processed": 75728,
-              "rows_per_sec": 7448.75,
-              "seconds_per_1k_rows": 0.1343
+              "rows_per_sec": 8024.1,
+              "seconds_per_1k_rows": 0.1246
             },
             "input": {
               "primary_timeframe": {
@@ -3137,10 +3137,10 @@
                 }
               ],
               "result_fingerprint": "77cb77f07c3f72f3c00cca43a4a03e31aafa007e9141e38e61407f20a66aaa44",
-              "elapsed_sec": 9.2636,
+              "elapsed_sec": 8.1006,
               "rows_processed": 75738,
-              "rows_per_sec": 8175.88,
-              "seconds_per_1k_rows": 0.1223
+              "rows_per_sec": 9349.65,
+              "seconds_per_1k_rows": 0.107
             },
             "input": {
               "primary_timeframe": {
@@ -3233,10 +3233,10 @@
                 }
               ],
               "result_fingerprint": "7f19927278761efaa25e81e5c9380325da8bd8c5239f0fc8fd82b3bb8cd45d35",
-              "elapsed_sec": 9.0123,
+              "elapsed_sec": 9.1091,
               "rows_processed": 75629,
-              "rows_per_sec": 8391.73,
-              "seconds_per_1k_rows": 0.1192
+              "rows_per_sec": 8302.56,
+              "seconds_per_1k_rows": 0.1204
             },
             "input": {
               "primary_timeframe": {
@@ -3319,10 +3319,10 @@
                 }
               ],
               "result_fingerprint": "36dfff31978cae81be0488b635729a1e89c4f65e3f6bc02669ac4476050ef605",
-              "elapsed_sec": 10.3306,
+              "elapsed_sec": 8.3936,
               "rows_processed": 75771,
-              "rows_per_sec": 7334.61,
-              "seconds_per_1k_rows": 0.1363
+              "rows_per_sec": 9027.26,
+              "seconds_per_1k_rows": 0.1108
             },
             "input": {
               "primary_timeframe": {
@@ -3461,10 +3461,10 @@
                 }
               ],
               "result_fingerprint": "373d7e7f0e60ab0be2a4556d54c19e5c7f3dcbd1ffb5ab26f52208687f29367b",
-              "elapsed_sec": 9.6337,
+              "elapsed_sec": 10.4883,
               "rows_processed": 75611,
-              "rows_per_sec": 7848.59,
-              "seconds_per_1k_rows": 0.1274
+              "rows_per_sec": 7209.11,
+              "seconds_per_1k_rows": 0.1387
             },
             "input": {
               "primary_timeframe": {
@@ -3584,10 +3584,10 @@
                 }
               ],
               "result_fingerprint": "9e4d2a648f6854308ffe15396f8be80383a3307f756a6e4ba936f831add010c2",
-              "elapsed_sec": 9.3134,
+              "elapsed_sec": 9.8716,
               "rows_processed": 75514,
-              "rows_per_sec": 8108.11,
-              "seconds_per_1k_rows": 0.1233
+              "rows_per_sec": 7649.6,
+              "seconds_per_1k_rows": 0.1307
             },
             "input": {
               "primary_timeframe": {
@@ -3626,9 +3626,9 @@
           "pnl_tolerance": 0.02
         },
         "history_summary": {
-          "sample_size": 0,
+          "sample_size": 1,
           "status": "insufficient_history",
-          "median_sec": null,
+          "median_sec": 87.0725,
           "upper_bound_sec": null,
           "robust_sigma_sec": null,
           "z_score": null
@@ -3636,11 +3636,11 @@
         "status": {
           "profitability": "fail",
           "speed": "insufficient_history",
-          "fingerprint": "changed",
-          "input_changed_since_last_real_run": true
+          "fingerprint": "pass",
+          "input_changed_since_last_real_run": false
         }
       }
     ]
   },
-  "current_run_was_duplicate": false
+  "current_run_was_duplicate": true
 }
