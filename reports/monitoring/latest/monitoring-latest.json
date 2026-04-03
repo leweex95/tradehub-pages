@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-03T15:59:09.937189+00:00",
+  "generated_at": "2026-04-03T16:35:50.219642+00:00",
   "history_meta": {
     "run_count": 5,
     "real_run_count": 5,
@@ -1825,8 +1825,8 @@
     ]
   },
   "current_run": {
-    "run_id": "20260403T155652Z",
-    "recorded_at": "2026-04-03T15:56:52.145034+00:00",
+    "run_id": "20260403T163143Z",
+    "recorded_at": "2026-04-03T16:31:43.833499+00:00",
     "date": "2026-04-03",
     "is_synthetic": false,
     "source": "local_monitoring",
@@ -1837,7 +1837,7 @@
       "dirty": true
     },
     "environment": {
-      "python": "3.11.9",
+      "python": "3.13.9",
       "platform": "Windows-10-10.0.19045-SP0",
       "processor": "Intel64 Family 6 Model 142 Stepping 12, GenuineIntel"
     },
@@ -1884,10 +1884,10 @@
           "end": "2025-05-01"
         },
         "summary": {
-          "elapsed_sec": 16.7575,
+          "elapsed_sec": 83.1946,
           "rows_processed": 681199,
-          "rows_per_sec": 40650.4,
-          "seconds_per_symbol": 1.8619,
+          "rows_per_sec": 8188.02,
+          "seconds_per_symbol": 9.2438,
           "trade_count": 11,
           "wins": 8,
           "losses": 3,
@@ -1982,10 +1982,10 @@
                 }
               ],
               "result_fingerprint": "451d34c3b70e64efd084f02ba46a6b441ab0a1e284cbc3fe03475282081197d8",
-              "elapsed_sec": 2.2432,
+              "elapsed_sec": 10.1775,
               "rows_processed": 75775,
-              "rows_per_sec": 33779.96,
-              "seconds_per_1k_rows": 0.0296
+              "rows_per_sec": 7445.36,
+              "seconds_per_1k_rows": 0.1343
             },
             "input": {
               "primary_timeframe": {
@@ -2032,10 +2032,10 @@
                 }
               ],
               "result_fingerprint": "fa2c6d9c46ec3dac5cd9fd89c6ec225ab82ee25f4a5540c8a092e25057d4ebb1",
-              "elapsed_sec": 1.2998,
+              "elapsed_sec": 8.9845,
               "rows_processed": 75772,
-              "rows_per_sec": 58294.33,
-              "seconds_per_1k_rows": 0.0172
+              "rows_per_sec": 8433.62,
+              "seconds_per_1k_rows": 0.1186
             },
             "input": {
               "primary_timeframe": {
@@ -2099,10 +2099,10 @@
                 }
               ],
               "result_fingerprint": "e80e1359611454d33c46dd96bfd67d34efe27363810c815a72aa458356d868bc",
-              "elapsed_sec": 1.8067,
+              "elapsed_sec": 10.2487,
               "rows_processed": 75661,
-              "rows_per_sec": 41876.88,
-              "seconds_per_1k_rows": 0.0239
+              "rows_per_sec": 7382.5,
+              "seconds_per_1k_rows": 0.1355
             },
             "input": {
               "primary_timeframe": {
@@ -2141,10 +2141,10 @@
               "exit_reason_counts": {},
               "daily": [],
               "result_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-              "elapsed_sec": 1.9419,
+              "elapsed_sec": 11.5889,
               "rows_processed": 75728,
-              "rows_per_sec": 38996.39,
-              "seconds_per_1k_rows": 0.0256
+              "rows_per_sec": 6534.55,
+              "seconds_per_1k_rows": 0.153
             },
             "input": {
               "primary_timeframe": {
@@ -2183,10 +2183,10 @@
               "exit_reason_counts": {},
               "daily": [],
               "result_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-              "elapsed_sec": 1.7145,
+              "elapsed_sec": 9.3901,
               "rows_processed": 75738,
-              "rows_per_sec": 44175.31,
-              "seconds_per_1k_rows": 0.0226
+              "rows_per_sec": 8065.76,
+              "seconds_per_1k_rows": 0.124
             },
             "input": {
               "primary_timeframe": {
@@ -2233,10 +2233,10 @@
                 }
               ],
               "result_fingerprint": "76a315d7c2d17a6fdfbb6c41702662a43fc87ef1a7b56659ab07e9817b651dd2",
-              "elapsed_sec": 1.8468,
+              "elapsed_sec": 11.791,
               "rows_processed": 75629,
-              "rows_per_sec": 40952.44,
-              "seconds_per_1k_rows": 0.0244
+              "rows_per_sec": 6414.15,
+              "seconds_per_1k_rows": 0.1559
             },
             "input": {
               "primary_timeframe": {
@@ -2275,10 +2275,10 @@
               "exit_reason_counts": {},
               "daily": [],
               "result_fingerprint": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
-              "elapsed_sec": 1.7191,
+              "elapsed_sec": 6.9776,
               "rows_processed": 75771,
-              "rows_per_sec": 44076.35,
-              "seconds_per_1k_rows": 0.0227
+              "rows_per_sec": 10859.25,
+              "seconds_per_1k_rows": 0.0921
             },
             "input": {
               "primary_timeframe": {
@@ -2331,10 +2331,10 @@
                 }
               ],
               "result_fingerprint": "69721ecf380b17f1f210fc3297ed0f74ae5230d1f33cbec9458bce9b26476c32",
-              "elapsed_sec": 1.6893,
+              "elapsed_sec": 6.488,
               "rows_processed": 75611,
-              "rows_per_sec": 44758.59,
-              "seconds_per_1k_rows": 0.0223
+              "rows_per_sec": 11654.05,
+              "seconds_per_1k_rows": 0.0858
             },
             "input": {
               "primary_timeframe": {
@@ -2386,10 +2386,10 @@
                 }
               ],
               "result_fingerprint": "086169cc4f40e3c450ca9061a3905952cc4c5a48079685ca212cffe2e4f7f31a",
-              "elapsed_sec": 2.4962,
+              "elapsed_sec": 7.5483,
               "rows_processed": 75514,
-              "rows_per_sec": 30251.84,
-              "seconds_per_1k_rows": 0.0331
+              "rows_per_sec": 10004.16,
+              "seconds_per_1k_rows": 0.1
             },
             "input": {
               "primary_timeframe": {
@@ -2478,10 +2478,10 @@
           "end": "2025-05-01"
         },
         "summary": {
-          "elapsed_sec": 78.7404,
+          "elapsed_sec": 120.2761,
           "rows_processed": 681199,
-          "rows_per_sec": 8651.2,
-          "seconds_per_symbol": 8.7489,
+          "rows_per_sec": 5663.63,
+          "seconds_per_symbol": 13.364,
           "trade_count": 104,
           "wins": 56,
           "losses": 48,
@@ -2770,10 +2770,10 @@
                 }
               ],
               "result_fingerprint": "691d21004177fe19d6715ff931e63634917f80cb9794e6d3dbdc540a76c8908d",
-              "elapsed_sec": 10.9332,
+              "elapsed_sec": 13.8132,
               "rows_processed": 75775,
-              "rows_per_sec": 6930.74,
-              "seconds_per_1k_rows": 0.1443
+              "rows_per_sec": 5485.69,
+              "seconds_per_1k_rows": 0.1823
             },
             "input": {
               "primary_timeframe": {
@@ -2861,10 +2861,10 @@
                 }
               ],
               "result_fingerprint": "f95bb46c934d54ab99e3dea99b5a2b6df0ec53a76a5f40599a896dd58254e102",
-              "elapsed_sec": 7.6574,
+              "elapsed_sec": 12.9624,
               "rows_processed": 75772,
-              "rows_per_sec": 9895.32,
-              "seconds_per_1k_rows": 0.1011
+              "rows_per_sec": 5845.51,
+              "seconds_per_1k_rows": 0.1711
             },
             "input": {
               "primary_timeframe": {
@@ -2969,10 +2969,10 @@
                 }
               ],
               "result_fingerprint": "f990ed396ac5661a3923ca4adbcf51152bfa3b50a9e019ee6eeec7675020ff6a",
-              "elapsed_sec": 9.6684,
+              "elapsed_sec": 13.3661,
               "rows_processed": 75661,
-              "rows_per_sec": 7825.6,
-              "seconds_per_1k_rows": 0.1278
+              "rows_per_sec": 5660.66,
+              "seconds_per_1k_rows": 0.1767
             },
             "input": {
               "primary_timeframe": {
@@ -3066,10 +3066,10 @@
                 }
               ],
               "result_fingerprint": "41afba736466a2cd582b203228fa83462634f54208d0d930f8fbda35f0739114",
-              "elapsed_sec": 9.477,
+              "elapsed_sec": 14.7376,
               "rows_processed": 75728,
-              "rows_per_sec": 7990.71,
-              "seconds_per_1k_rows": 0.1251
+              "rows_per_sec": 5138.41,
+              "seconds_per_1k_rows": 0.1946
             },
             "input": {
               "primary_timeframe": {
@@ -3137,10 +3137,10 @@
                 }
               ],
               "result_fingerprint": "77cb77f07c3f72f3c00cca43a4a03e31aafa007e9141e38e61407f20a66aaa44",
-              "elapsed_sec": 6.7904,
+              "elapsed_sec": 11.9442,
               "rows_processed": 75738,
-              "rows_per_sec": 11153.75,
-              "seconds_per_1k_rows": 0.0897
+              "rows_per_sec": 6340.99,
+              "seconds_per_1k_rows": 0.1577
             },
             "input": {
               "primary_timeframe": {
@@ -3233,10 +3233,10 @@
                 }
               ],
               "result_fingerprint": "7f19927278761efaa25e81e5c9380325da8bd8c5239f0fc8fd82b3bb8cd45d35",
-              "elapsed_sec": 9.1437,
+              "elapsed_sec": 12.8057,
               "rows_processed": 75629,
-              "rows_per_sec": 8271.14,
-              "seconds_per_1k_rows": 0.1209
+              "rows_per_sec": 5905.88,
+              "seconds_per_1k_rows": 0.1693
             },
             "input": {
               "primary_timeframe": {
@@ -3319,10 +3319,10 @@
                 }
               ],
               "result_fingerprint": "36dfff31978cae81be0488b635729a1e89c4f65e3f6bc02669ac4476050ef605",
-              "elapsed_sec": 7.1197,
+              "elapsed_sec": 11.7083,
               "rows_processed": 75771,
-              "rows_per_sec": 10642.39,
-              "seconds_per_1k_rows": 0.094
+              "rows_per_sec": 6471.56,
+              "seconds_per_1k_rows": 0.1545
             },
             "input": {
               "primary_timeframe": {
@@ -3461,10 +3461,10 @@
                 }
               ],
               "result_fingerprint": "373d7e7f0e60ab0be2a4556d54c19e5c7f3dcbd1ffb5ab26f52208687f29367b",
-              "elapsed_sec": 9.1744,
+              "elapsed_sec": 15.3672,
               "rows_processed": 75611,
-              "rows_per_sec": 8241.54,
-              "seconds_per_1k_rows": 0.1213
+              "rows_per_sec": 4920.29,
+              "seconds_per_1k_rows": 0.2032
             },
             "input": {
               "primary_timeframe": {
@@ -3584,10 +3584,10 @@
                 }
               ],
               "result_fingerprint": "9e4d2a648f6854308ffe15396f8be80383a3307f756a6e4ba936f831add010c2",
-              "elapsed_sec": 8.7762,
+              "elapsed_sec": 13.5714,
               "rows_processed": 75514,
-              "rows_per_sec": 8604.37,
-              "seconds_per_1k_rows": 0.1162
+              "rows_per_sec": 5564.19,
+              "seconds_per_1k_rows": 0.1797
             },
             "input": {
               "primary_timeframe": {
