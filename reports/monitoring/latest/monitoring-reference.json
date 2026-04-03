@@ -1,5 +1,0 @@
-{
-  "baseline_source": "tests/test_strategy_regression.py",
-  "baseline_commit": "361d963cefd058a66ee875f218ac2a847937dc60",
-  "pnl_tolerance": 0.02
-}
