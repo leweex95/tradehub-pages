@@ -125,8 +125,69 @@ def render_report_list(reports: list[Report]) -> str:
 def build_html(reports: list[Report]) -> str:
     now = dt.datetime.now(tz=UTC)
     latest = reports[0] if reports else None
-    latest_comparison = next((report for report in reports if report.is_comparison), None)
     commit = run_git(["rev-parse", "--short", "HEAD"]) or "unknown"
+
+    if latest:
+        href = html.escape(latest.rel_path)
+        title = html.escape(latest.title)
+        updated = format_utc(latest.updated_at)
+        return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{title}</title>
+  <meta http-equiv="refresh" content="0; url={href}">
+  <link rel="canonical" href="{href}">
+  <script>window.location.replace({href!r});</script>
+  <style>
+    :root {{
+      --bg: #0d141b;
+      --panel: rgba(14, 24, 33, 0.92);
+      --ink: #edf4f8;
+      --muted: #98a8b5;
+      --line: rgba(166, 191, 210, 0.16);
+      --accent: #58d3b0;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(88, 211, 176, 0.10), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(255, 139, 110, 0.10), transparent 28%),
+        linear-gradient(180deg, #152431 0%, #0d141b 100%);
+    }}
+    .card {{
+      max-width: 760px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--panel);
+      text-align: center;
+    }}
+    h1 {{ margin: 0 0 12px; font-size: 1.6rem; }}
+    p {{ margin: 0.4rem 0; color: var(--muted); }}
+    a {{ color: var(--accent); text-decoration: none; }}
+    a:hover {{ text-decoration: underline; }}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Redirecting to the latest TradeHub report</h1>
+    <p><a href="{href}">{title}</a></p>
+    <p>Updated {updated}.</p>
+    <p>If the redirect does not happen automatically, use the link above.</p>
+    <p>Generated at {format_utc(now)} from commit {html.escape(commit)}.</p>
+  </main>
+</body>
+</html>
+"""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -243,10 +304,6 @@ def build_html(reports: list[Report]) -> str:
     <section>
       <h2>Latest Report</h2>
       {render_latest(latest, "Most recently updated HTML report in this repository.")}
-    </section>
-    <section>
-      <h2>Latest Comparison Report</h2>
-      {render_latest(latest_comparison, "Most recently updated comparison-style report (file name contains comparison hints).")}
     </section>
     <section>
       <h2>All Reports</h2>
