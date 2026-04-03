@@ -569,6 +569,68 @@ tbody tr:hover { background: var(--tab-hover-bg); }
 
 .scope-list-value { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 
+/* ── Header nav links ────────────────────────────────────────────────────── */
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.header-nav-link {
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  text-decoration: none;
+  transition: color .2s, background .2s;
+}
+.header-nav-link:hover { color: var(--ink); background: var(--tab-hover-bg); }
+.header-nav-link.forward-link { color: var(--accent); }
+.header-nav-link.forward-link:hover { background: var(--accent-glow); }
+
+/* ── Forward Testing Snapshot section ───────────────────────────────────── */
+.fwd-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.fwd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+}
+.fwd-header-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.fwd-mode-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.fwd-full-link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity .2s;
+}
+.fwd-full-link:hover { opacity: .75; }
+.fwd-kpis {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 12px;
+}
+.fwd-strategies { margin-top: 4px; }
+.fwd-updated {
+  font-size: 0.78rem;
+  color: var(--ink-faint);
+  text-align: right;
+}
+
 /* ── Utility ─────────────────────────────────────────────────────────────── */
 .empty-state { color: var(--ink-muted); }
 
@@ -588,6 +650,7 @@ tbody tr:hover { background: var(--tab-hover-bg); }
   .chart-pair        { grid-template-columns: 1fr; }
   .stat-row          { grid-template-columns: repeat(3, 1fr); }
   .month-card        { grid-template-columns: minmax(110px, auto) 1fr auto; }
+  .fwd-kpis          { grid-template-columns: repeat(4, 1fr); }
 }
 
 @media (max-width: 600px) {

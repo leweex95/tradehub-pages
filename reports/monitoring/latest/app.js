@@ -8,6 +8,7 @@ const PALETTE = ["--c0","--c1","--c2","--c3","--c4","--c5"];
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
   history: null,      // full history document
+  forward: null,      // forward_data.json (null when unavailable)
   activeTab: null,    // strategy nickname currently shown
   theme: localStorage.getItem(THEME_KEY) || "dark",
 };
@@ -76,17 +77,20 @@ function plot(id, traces, extra = {}, config = {}) {
 }
 
 // ── Fetch & boot ──────────────────────────────────────────────────────────────
-fetch("monitoring-history.json")
-  .then(r => r.json())
-  .then(data => {
-    state.history = data;
-    const stratGroups = groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []);
-    state.activeTab = stratGroups[0]?.nickname ?? null;
-    boot(stratGroups);
-  })
-  .catch(err => {
-    document.body.innerHTML = `<main class="page"><div class="panel" style="padding:32px"><p class="empty-state">Failed to load dashboard data: ${esc(String(err))}</p></div></main>`;
-  });
+const _FWD_PATH = "../../../forward/forward_data.json";
+
+Promise.all([
+  fetch("monitoring-history.json").then(r => r.json()),
+  fetch(_FWD_PATH).then(r => r.json()).catch(() => null),
+]).then(([monData, fwdData]) => {
+  state.history = monData;
+  state.forward = fwdData;
+  const stratGroups = groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []);
+  state.activeTab = stratGroups[0]?.nickname ?? null;
+  boot(stratGroups);
+}).catch(err => {
+  document.body.innerHTML = `<main class="page"><div class="panel" style="padding:32px"><p class="empty-state">Failed to load dashboard data: ${esc(String(err))}</p></div></main>`;
+});
 
 // ── Theme toggle ──────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
@@ -106,6 +110,7 @@ window.addEventListener("resize", debounce(renderCharts, 120));
 function boot(stratGroups) {
   renderHero();
   renderHeaderStatus();
+  renderForwardSnapshot();
   renderAggCharts(stratGroups);
   renderAggLegend(stratGroups);
   renderTabs(stratGroups);
@@ -117,6 +122,129 @@ function renderCharts() {
   renderAggCharts(stratGroups);
   // also redraw any open pane charts
   if (state.activeTab) renderTabPane(state.activeTab, stratGroups);
+}
+
+// ── Forward Testing Snapshot ──────────────────────────────────────────────────
+function renderForwardSnapshot() {
+  const fwd = state.forward;
+  const section = document.getElementById("fwd-section");
+  if (!section) return;
+
+  if (!fwd) {
+    section.innerHTML = `
+      <div class="fwd-header">
+        <div>
+          <p class="eyebrow">Live / Demo deployment</p>
+          <h2 class="section-title">Forward Testing Snapshot</h2>
+        </div>
+        <a href="../../../forward/index.html" class="fwd-full-link">Full dashboard →</a>
+      </div>
+      <div class="panel" style="padding:24px;text-align:center">
+        <p class="empty-state">Forward testing data not available yet. Start the forward runner to see live data here.</p>
+      </div>`;
+    return;
+  }
+
+  const s = fwd.stats ?? {};
+  const mode = fwd.mode ?? "unknown";
+  const isDemo = mode === "dummy" || mode === "demo";
+  const badgeColor = isDemo ? "var(--warn)" : "var(--good)";
+  const badgeText  = isDemo ? "DEMO" : "LIVE";
+
+  // Mode badge
+  const badge = document.getElementById("fwd-mode-badge");
+  if (badge) {
+    badge.textContent = badgeText;
+    badge.style.cssText = `background:${badgeColor}22;color:${badgeColor};border:1px solid ${badgeColor}55;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;`;
+  }
+
+  // KPIs
+  const kpiEl = document.getElementById("fwd-kpis");
+  if (kpiEl) {
+    const pnlColor = (s.total_pnl_usd ?? 0) >= 0 ? "var(--good)" : "var(--danger)";
+    const retColor = (s.return_pct ?? 0) >= 0 ? "var(--good)" : "var(--danger)";
+    kpiEl.innerHTML = [
+      { label: "Trades",        value: s.total_trades ?? 0,                  color: "" },
+      { label: "Win rate",      value: fmt(s.win_rate_pct, 1) + "%",         color: "" },
+      { label: "Net P&L",       value: currency.format(s.total_pnl_usd ?? 0), color: pnlColor },
+      { label: "Return",        value: fmtS(s.return_pct, 1) + "%",         color: retColor },
+      { label: "Profit factor", value: fmt(s.profit_factor, 2),             color: "" },
+      { label: "Max drawdown",  value: fmt(s.max_drawdown_pct, 1) + "%",    color: "var(--danger)" },
+      { label: "Total R",       value: fmtS(s.total_r, 1) + "R",           color: retColor },
+    ].map(k => `<div class="kpi-card">
+      <span class="kpi-label">${k.label}</span>
+      <span class="kpi-value" style="${k.color ? "color:" + k.color : ""}">${k.value}</span>
+    </div>`).join("");
+  }
+
+  // Equity curve
+  const eq = fwd.equity_curve ?? [];
+  if (eq.length) {
+    const xs = eq.map(p => p.date ?? p.ts ?? "");
+    const ys = eq.map(p => p.equity ?? p.value ?? 0);
+    plot("fwd-equity-chart", [{
+      type: "scatter", mode: "lines", name: "Equity",
+      x: xs, y: ys,
+      fill: "tozeroy",
+      line: { color: "var(--accent)", width: 2.5 },
+      fillcolor: "rgba(65,217,168,0.08)",
+      hovertemplate: "%{x}: %{y:$,.2f}<extra></extra>",
+    }], {
+      yaxis: { title: "USD", tickprefix: "$" },
+      xaxis: { type: "date" },
+    });
+    const noteEl = document.getElementById("fwd-equity-note");
+    if (noteEl) noteEl.textContent = `Period: ${fwd.period?.start ?? ""} → ${fwd.period?.end ?? ""}  ·  initial $${(fwd.initial_equity ?? 0).toLocaleString()}`;
+  }
+
+  // Daily P&L bar chart
+  const daily = s.daily_pnl ?? {};
+  const dailyKeys = Object.keys(daily).sort();
+  if (dailyKeys.length) {
+    const ys2 = dailyKeys.map(d => daily[d] ?? 0);
+    plot("fwd-daily-chart", [{
+      type: "bar", name: "Daily P&L",
+      x: dailyKeys,
+      y: ys2,
+      marker: { color: ys2.map(v => v >= 0 ? "rgba(111,217,143,0.85)" : "rgba(255,123,97,0.85)") },
+      hovertemplate: "%{x}: %{y:$,.2f}<extra></extra>",
+    }], { yaxis: { title: "USD", tickprefix: "$" }, xaxis: { type: "date" } });
+  }
+
+  // Per-strategy breakdown
+  const byStrat = s.by_strategy ?? {};
+  const stratNames = Object.keys(byStrat);
+  const stratEl = document.getElementById("fwd-strategies");
+  if (stratEl && stratNames.length) {
+    stratEl.innerHTML = `
+      <p class="eyebrow" style="margin-bottom:12px">Per-strategy breakdown</p>
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>Strategy</th><th>Trades</th><th>Win rate</th><th>Net P&L</th><th>Total R</th><th>Profit factor</th><th>Max DD</th>
+        </tr></thead>
+        <tbody>
+        ${stratNames.map(name => {
+          const st = byStrat[name] ?? {};
+          const pnl = st.total_pnl_usd ?? 0;
+          return `<tr>
+            <td><strong>${esc(name)}</strong></td>
+            <td>${st.total_trades ?? 0}</td>
+            <td>${fmt(st.win_rate_pct, 1)}%</td>
+            <td style="color:${pnl >= 0 ? "var(--good)" : "var(--danger)"}">${currency.format(pnl)}</td>
+            <td>${fmtS(st.total_r, 1)}R</td>
+            <td>${fmt(st.profit_factor, 2)}</td>
+            <td style="color:var(--danger)">${fmt(st.max_drawdown_pct, 1)}%</td>
+          </tr>`;
+        }).join("")}
+        </tbody>
+      </table></div>`;
+  } else if (stratEl) {
+    stratEl.innerHTML = "";
+  }
+
+  // Last updated
+  const updEl = document.getElementById("fwd-updated");
+  if (updEl && fwd.generated_at) updEl.textContent = `Forward data last updated: ${fwd.generated_at}`;
 }
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
