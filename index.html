@@ -1,21 +1,278 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TradeHub Reports</title>
+  <title>TradeHub — Strategy Performance</title>
+  <style>
+    :root {
+      --bg: #03060a;
+      --bg2: #070d14;
+      --panel: rgba(8, 20, 32, 0.92);
+      --panel-raised: rgba(12, 26, 42, 0.95);
+      --panel-border: rgba(65, 217, 168, 0.14);
+      --ink: #e8f4ef;
+      --ink-muted: #7aa898;
+      --accent: #41d9a8;
+      --accent-glow: rgba(65, 217, 168, 0.12);
+      --accent-border: rgba(65, 217, 168, 0.35);
+      --warn: #f5c26b;
+      --danger: #ff7b61;
+      --good: #6fd98f;
+      --shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", "Inter", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--ink);
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse at 12% 0%, rgba(65,217,168,.07) 0%, transparent 42%),
+        radial-gradient(ellipse at 88% 100%, rgba(255,123,97,.05) 0%, transparent 42%);
+      min-height: 100vh;
+    }
+    .page {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 56px 24px 72px;
+    }
+    /* brand header */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 60px;
+    }
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent);
+      animation: pulse 2.8s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 8px var(--accent); }
+      50%       { box-shadow: 0 0 22px var(--accent), 0 0 40px var(--accent-glow); }
+    }
+    .brand-name {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .brand-sub { color: var(--ink-muted); font-weight: 400; }
+    /* hero */
+    .hero { margin-bottom: 56px; }
+    .eyebrow {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+    .hero h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(2.4rem, 5vw, 4.2rem);
+      line-height: 1.02;
+      letter-spacing: -0.025em;
+      margin-bottom: 16px;
+    }
+    .hero h1 em { font-style: italic; color: var(--accent); }
+    .hero p {
+      font-size: 1.05rem;
+      color: var(--ink-muted);
+      max-width: 62ch;
+    }
+    /* nav cards */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 56px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 24px;
+      padding: 28px 30px;
+      box-shadow: var(--shadow);
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color .22s, background .22s, box-shadow .22s, transform .18s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 24px;
+      background: var(--accent-glow);
+      opacity: 0;
+      transition: opacity .22s;
+    }
+    .card:hover { border-color: var(--accent-border); box-shadow: 0 28px 70px rgba(0,0,0,.65), 0 0 30px var(--accent-glow); transform: translateY(-2px); }
+    .card:hover::before { opacity: 1; }
+    .card-icon {
+      font-size: 2.4rem;
+      line-height: 1;
+      margin-bottom: 4px;
+      position: relative;
+    }
+    .card h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 1.4rem;
+      font-weight: 600;
+      position: relative;
+    }
+    .card p {
+      font-size: 0.92rem;
+      color: var(--ink-muted);
+      position: relative;
+      flex: 1;
+    }
+    .card-meta {
+      font-size: 0.75rem;
+      color: var(--ink-muted);
+      position: relative;
+    }
+    .card-arrow {
+      font-size: 1.2rem;
+      color: var(--accent);
+      position: relative;
+      margin-top: 4px;
+    }
+    .card-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      border: 1px solid var(--panel-border);
+      color: var(--accent);
+      background: var(--accent-glow);
+      position: relative;
+    }
+    .card-badge.live {
+      color: var(--good);
+      background: rgba(111,217,143,.12);
+      border-color: rgba(111,217,143,.25);
+    }
+    .card-badge.demo {
+      color: var(--warn);
+      background: rgba(245,194,107,.10);
+      border-color: rgba(245,194,107,.22);
+    }
+    /* features grid */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 56px;
+    }
+    .feature {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      padding: 18px 20px;
+    }
+    .feature-icon { font-size: 1.4rem; margin-bottom: 8px; }
+    .feature h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
+    .feature p { font-size: 0.84rem; color: var(--ink-muted); }
+    /* footer */
+    .footer {
+      font-size: 0.78rem;
+      color: rgba(120,160,140,.45);
+      text-align: center;
+      border-top: 1px solid var(--panel-border);
+      padding-top: 24px;
+    }
+    @media (max-width: 600px) {
+      .page { padding: 32px 16px 48px; }
+      .hero h1 { font-size: 2.4rem; }
+    }
+  </style>
 </head>
 <body>
-  <h1>TradeHub Public Reports</h1>
-  <p>No committed dashboard artifact was available in this run.</p>
-  <p>Source commit: 41b8fd42c8403d498dec8b25ab6ee21f19634a65</p>
-  <h2>Published files</h2>
-  <ul>
-<li><a href="docs/deployment.md">docs/deployment.md</a></li>
-<li><a href="docs/mt5_service.md">docs/mt5_service.md</a></li>
-<li><a href="docs/performance_boosts.md">docs/performance_boosts.md</a></li>
-<li><a href="docs/strategy_configuration.md">docs/strategy_configuration.md</a></li>
-<li><a href="docs/vps_forward_testing.md">docs/vps_forward_testing.md</a></li>
-  </ul>
+  <main class="page">
+    <!-- Brand -->
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span class="brand-name">TradeHub <span class="brand-sub">/ public dashboard</span></span>
+    </div>
+
+    <!-- Hero -->
+    <section class="hero">
+      <p class="eyebrow">Systematic trading research</p>
+      <h1>Strategy performance<br><em>made transparent</em></h1>
+      <p>
+        Public aggregate metrics from automated backtesting and forward testing pipelines.
+        All sensitive parameters stay private — only hashes, aggregates, dates and symbol scope are exposed.
+      </p>
+    </section>
+
+    <!-- Navigation cards -->
+    <div class="cards">
+      <a href="reports/monitoring/latest/index.html" class="card">
+        <div class="card-icon">📈</div>
+        <span class="card-badge">Daily Backtesting</span>
+        <h2>Monitoring Dashboard</h2>
+        <p>
+          Long-term regression tracking — runtime stability, profitability drift, result fingerprints
+          and consecutive-run change detection across all strategies.
+        </p>
+        <div class="card-meta">Last updated: 2026-04-03 12:58 UTC</div>
+        <div class="card-arrow">→</div>
+      </a>
+
+      <a href="forward/index.html" class="card">
+        <div class="card-icon">⚡</div>
+        <span class="card-badge demo">Demo / Forward</span>
+        <h2>Forward Testing</h2>
+        <p>
+          Live or demo-account forward deployments — trade-level data, equity curves, daily P&amp;L
+          breakdown and per-strategy performance metrics.
+        </p>
+        <div class="card-meta">Last updated: —</div>
+        <div class="card-arrow">→</div>
+      </a>
+    </div>
+
+    <!-- Feature highlights -->
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">🔒</div>
+        <h3>Privacy-first</h3>
+        <p>Only hashes, aggregates and dates are published. No signals, parameters or trade details exposed.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔄</div>
+        <h3>Automated pipeline</h3>
+        <p>Daily backtests commit results automatically via GitHub Actions on each push.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📊</div>
+        <h3>Consecutive tracking</h3>
+        <p>Regressions detected by comparing each run vs the prior run — not a stale baseline.</p>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🎯</div>
+        <h3>Multi-strategy</h3>
+        <p>Independent benchmark suites per strategy, with per-symbol breakdown and monthly windows.</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      Generated 2026-04-03 15:59 UTC · commit 3277b7d · 1 report(s)
+    </footer>
+  </main>
 </body>
 </html>

@@ -641,6 +641,93 @@ tbody tr:hover { background: var(--tab-hover-bg); }
   padding-top: 8px;
 }
 
+/* ── Strategy filter (aggregate section) ────────────────────────────────── */
+.strat-filter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.filter-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filter-btn {
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color .18s, background .18s, color .18s;
+  white-space: nowrap;
+}
+
+.filter-btn:hover {
+  border-color: var(--accent-border);
+  color: var(--ink);
+  background: var(--tab-hover-bg);
+}
+
+.filter-btn.active {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ── Symbol filter (inside tab pane) ────────────────────────────────────── */
+.symbol-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 0 4px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.filter-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+}
+
+.filter-chip {
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color .18s, background .18s, color .18s;
+}
+
+.filter-chip:hover {
+  border-color: var(--accent-border);
+  color: var(--ink);
+}
+
+.filter-chip.active {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* ── Per-tab history charts ──────────────────────────────────────────────── */
+.pane-history-charts { margin-top: 4px; }
+
 /* ============================================================
    RESPONSIVE
    ============================================================ */

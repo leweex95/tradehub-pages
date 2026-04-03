@@ -7,13 +7,15 @@ const PALETTE = ["--c0","--c1","--c2","--c3","--c4","--c5"];
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
-  history: null,      // full history document
-  forward: null,      // forward_data.json (null when unavailable)
-  activeTab: null,    // strategy nickname currently shown
+  history: null,
+  forward: null,
+  activeTab: null,
   theme: localStorage.getItem(THEME_KEY) || "dark",
+  stratFilter: null,   // null = all; string = strategy nickname
+  tabSymFilter: {},    // { nickname: symbol | null }
 };
 
-// ── Apply initial theme synchronously to avoid flash ─────────────────────────
+// Apply theme immediately — HTML already has data-theme="dark" as safe fallback
 document.documentElement.dataset.theme = state.theme;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -38,8 +40,63 @@ function fmtS(v, d = 2) {
 function debounce(fn, ms) {
   let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
 }
-function getRuns() { return state.history?.runs ?? []; }
-function getLatestRun() { const r = getRuns(); return r[r.length - 1] ?? null; }
+
+// ── Data helpers ──────────────────────────────────────────────────────────────
+function getRawRuns() { return state.history?.runs ?? []; }
+
+/** Returns runs deduped by date — keeps only the latest run_id per calendar day. */
+function getDeduplicatedRuns() {
+  const byDate = new Map();
+  for (const run of getRawRuns()) {
+    const d = run.date;
+    if (!byDate.has(d) || run.run_id > byDate.get(d).run_id) byDate.set(d, run);
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function getLatestRun() {
+  const r = getDeduplicatedRuns();
+  return r[r.length - 1] ?? null;
+}
+
+function getPreviousRun() {
+  const r = getDeduplicatedRuns();
+  return r[r.length - 2] ?? null;
+}
+
+/**
+ * True if the result_fingerprint for benchmarkId changed between the two most
+ * recent deduplicated runs (consecutive comparison, not vs original baseline).
+ */
+function hasConsecutiveFingerprintChange(benchmarkId) {
+  const latest = getLatestRun(), prev = getPreviousRun();
+  if (!latest || !prev) return false;
+  const lb = (latest.benchmarks ?? []).find(b => b.id === benchmarkId);
+  const pb = (prev.benchmarks   ?? []).find(b => b.id === benchmarkId);
+  if (!lb || !pb) return false;
+  const lf = lb.summary?.result_fingerprint, pf = pb.summary?.result_fingerprint;
+  return !!(lf && pf && lf !== pf);
+}
+
+/**
+ * True if net_pnl_dollars shifted by more than `tol` (relative) between the
+ * two most recent deduplicated runs.
+ */
+function hasConsecutivePnlDrift(benchmarkId, tol = 0.05) {
+  const latest = getLatestRun(), prev = getPreviousRun();
+  if (!latest || !prev) return false;
+  const lb = (latest.benchmarks ?? []).find(b => b.id === benchmarkId);
+  const pb = (prev.benchmarks   ?? []).find(b => b.id === benchmarkId);
+  if (!lb || !pb) return false;
+  const lp = lb.summary?.net_pnl_dollars ?? 0, pp = pb.summary?.net_pnl_dollars ?? 0;
+  if (pp === 0) return lp !== 0;
+  return Math.abs((lp - pp) / Math.abs(pp)) > tol;
+}
+
+/** True if there is any consecutive-run alert for benchmark b. */
+function benchmarkHasAlert(b) {
+  return hasConsecutiveFingerprintChange(b.id) || hasConsecutivePnlDrift(b.id);
+}
 
 // Groups benchmarks by their base nickname (strip trailing _YYYY_MM or _YYYY etc.)
 function strategyNicknameOf(benchmark) {
@@ -111,6 +168,7 @@ function boot(stratGroups) {
   renderHero();
   renderHeaderStatus();
   renderForwardSnapshot();
+  renderStratFilter(stratGroups);
   renderAggCharts(stratGroups);
   renderAggLegend(stratGroups);
   renderTabs(stratGroups);
@@ -254,7 +312,7 @@ function renderHero() {
   const latestRun = getLatestRun();
   const meta = state.history?.history_meta ?? {};
   const allBenchmarks = latestRun?.benchmarks ?? [];
-  const totalAlerts = allBenchmarks.filter(b => b.status?.profitability === "fail" || b.status?.speed === "alert").length;
+  const totalAlerts = allBenchmarks.filter(b => benchmarkHasAlert(b)).length;
 
   kpis.innerHTML = [
     { label: "Latest run",        value: latestRun?.date ?? "n/a",              sub: latestRun?.repo?.short_commit ?? "" },
@@ -275,25 +333,86 @@ function renderHeaderStatus() {
   const el = document.getElementById("header-status");
   if (!el) return;
   const latestRun = getLatestRun();
-  const overall = latestRun?.suite_status?.overall_status ?? "unknown";
-  const colors = { pass: "var(--good)", alert: "var(--danger)", demo: "var(--warn)", unknown: "var(--ink-muted)" };
+  const allBenchmarks = latestRun?.benchmarks ?? [];
+  const hasAlerts = allBenchmarks.some(b => benchmarkHasAlert(b));
+  const overall = hasAlerts ? "alert" : (latestRun ? "pass" : "unknown");
+  const colors = { pass: "var(--good)", alert: "var(--danger)", unknown: "var(--ink-muted)" };
   const color = colors[overall] ?? colors.unknown;
   el.innerHTML = `
     <span style="width:8px;height:8px;border-radius:50%;background:${color};display:inline-block;"></span>
-    <span>${esc(overall === "pass" ? "All passing" : overall === "alert" ? "Regression detected" : overall)}</span>
+    <span>${esc(overall === "pass" ? "All passing" : overall === "alert" ? "Regression detected" : "Unknown")}</span>
   `;
 }
 
-// ── Aggregate charts (all strategies, all runs) ───────────────────────────────
-function renderAggCharts(stratGroups) {
-  const runs = getRuns();
+// ── Strategy filter ───────────────────────────────────────────────────────────
+function renderStratFilter(stratGroups) {
+  const el = document.getElementById("strat-filter");
+  if (!el) return;
+  const active = state.stratFilter;
+  const btns = [
+    `<button class="filter-btn${active === null ? " active" : ""}" data-strat="">All strategies</button>`,
+    ...stratGroups.map(g =>
+      `<button class="filter-btn${active === g.nickname ? " active" : ""}" data-strat="${esc(g.nickname)}">${esc(g.public_name)}</button>`
+    ),
+  ].join("");
+  el.innerHTML = `<span class="filter-label">Filter:</span><div class="filter-btns">${btns}</div>`;
+  el.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.stratFilter = btn.dataset.strat || null;
+      renderStratFilter(stratGroups);
+      renderAggCharts(stratGroups);
+    });
+  });
+}
 
-  // One trace per strategy — runtime line chart
+// ── Aggregate charts (all strategies, all runs, deduped) ──────────────────────
+function renderAggCharts(stratGroups) {
+  const runs = getDeduplicatedRuns();  // ← one entry per calendar date
+
+  if (state.stratFilter) {
+    // Filtered view: per-symbol stacked bars for selected strategy
+    const grp = stratGroups.find(g => g.nickname === state.stratFilter);
+    if (!grp) return;
+    const symbolSet = new Set();
+    for (const run of runs)
+      for (const b of (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname))
+        for (const sym of (b.symbols ?? [])) symbolSet.add(sym.symbol);
+    const symbols = [...symbolSet].sort();
+    const dates = runs.map(r => r.date);
+
+    const pnlTraces = symbols.map((sym, i) => {
+      const colour = cssVar(PALETTE[i % PALETTE.length]);
+      const ys = runs.map(run =>
+        (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname)
+          .flatMap(b => b.symbols ?? []).filter(s => s.symbol === sym)
+          .reduce((a, s) => a + (s.summary?.net_pnl_dollars ?? 0), 0));
+      return { type: "bar", name: sym, x: dates, y: ys,
+        marker: { color: colour, opacity: 0.85 },
+        hovertemplate: `<b>${esc(sym)}</b><br>%{x}: %{y:$,.2f}<extra></extra>` };
+    });
+    const rtTraces = symbols.map((sym, i) => {
+      const colour = cssVar(PALETTE[i % PALETTE.length]);
+      const ys = runs.map(run =>
+        (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname)
+          .flatMap(b => b.symbols ?? []).filter(s => s.symbol === sym)
+          .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0));
+      return { type: "scatter", mode: "lines+markers", name: sym, x: dates, y: ys,
+        line: { color: colour, width: 2 }, marker: { color: colour, size: 5 },
+        hovertemplate: `<b>${esc(sym)}</b><br>%{x}: %{y:.2f}s<extra></extra>` };
+    });
+
+    plot("agg-pnl-chart", pnlTraces, { barmode: "stack", yaxis: { title: "USD" } });
+    plot("agg-runtime-chart", rtTraces, { yaxis: { title: "Seconds" } });
+    document.getElementById("agg-pnl-note").textContent = `Per-symbol net PnL for ${grp.public_name} — one bar per run date.`;
+    document.getElementById("agg-runtime-note").textContent = `Per-symbol runtime breakdown for ${grp.public_name}.`;
+    return;
+  }
+
+  // Unfiltered view: one trace per strategy
   const rtTraces = stratGroups.map((grp, i) => {
     const colour = cssVar(PALETTE[i % PALETTE.length]);
     const xs = [], ys = [];
     for (const run of runs) {
-      // sum elapsed for all benchmarks belonging to this strategy
       const sum = (run.benchmarks ?? [])
         .filter(b => strategyNicknameOf(b) === grp.nickname)
         .reduce((acc, b) => acc + (b.summary?.elapsed_sec ?? 0), 0);
@@ -303,11 +422,9 @@ function renderAggCharts(stratGroups) {
       line: { color: colour, width: 2.5 }, marker: { color: colour, size: 6 },
       hovertemplate: `<b>${esc(grp.public_name)}</b><br>%{x}: %{y:.2f}s<extra></extra>` };
   });
-
   plot("agg-runtime-chart", rtTraces, { yaxis: { title: "Total seconds" } });
   document.getElementById("agg-runtime-note").textContent = "Sum of all benchmark runtimes per run date across each strategy.";
 
-  // One trace per strategy — net PnL bar chart (grouped)
   const pnlTraces = stratGroups.map((grp, i) => {
     const colour = cssVar(PALETTE[i % PALETTE.length]);
     const xs = [], ys = [];
@@ -321,7 +438,6 @@ function renderAggCharts(stratGroups) {
       marker: { color: colour, opacity: 0.8 },
       hovertemplate: `<b>${esc(grp.public_name)}</b><br>%{x}: %{y:$,.2f}<extra></extra>` };
   });
-
   plot("agg-pnl-chart", pnlTraces, { barmode: "group", yaxis: { title: "USD" } });
   document.getElementById("agg-pnl-note").textContent = "Aggregate net PnL across all monthly benchmarks per strategy per run.";
 }
@@ -344,7 +460,7 @@ function renderTabs(stratGroups) {
   bar.innerHTML = stratGroups.map(grp => {
     const latestRun = getLatestRun();
     const benchmarks = (latestRun?.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname);
-    const alertCount = benchmarks.filter(b => b.status?.profitability === "fail" || b.status?.speed === "alert").length;
+    const alertCount = benchmarks.filter(b => benchmarkHasAlert(b)).length;
     const badge = alertCount > 0
       ? `<span class="tab-badge">${alertCount}</span>`
       : `<span class="tab-badge ok">✓</span>`;
@@ -377,49 +493,136 @@ function renderTabPane(nickname, stratGroups) {
   if (!grp) return;
 
   const latestRun = getLatestRun();
-  const benchmarks = (latestRun?.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname);
+  const allBenchmarks = (latestRun?.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname);
 
-  // Aggregate stats for this strategy across ALL benchmarks (all months)
-  const totalTrades = benchmarks.reduce((a,b) => a + (b.summary?.trade_count ?? 0), 0);
-  const totalWins   = benchmarks.reduce((a,b) => a + (b.summary?.wins ?? 0), 0);
-  const totalPnl    = benchmarks.reduce((a,b) => a + (b.summary?.net_pnl_dollars ?? 0), 0);
+  // Collect all unique symbols across all benchmarks for this strategy
+  const symbolSet = new Set();
+  for (const b of allBenchmarks) for (const s of (b.symbols ?? [])) symbolSet.add(s.symbol);
+  const allSymbols = [...symbolSet].sort();
+
+  // Respect symbol filter
+  const activeSym = state.tabSymFilter[nickname] ?? null;
+  const benchmarks = activeSym
+    ? allBenchmarks.filter(b => (b.symbols ?? []).some(s => s.symbol === activeSym))
+    : allBenchmarks;
+
+  const totalTrades  = benchmarks.reduce((a,b) => a + (b.summary?.trade_count ?? 0), 0);
+  const totalWins    = benchmarks.reduce((a,b) => a + (b.summary?.wins ?? 0), 0);
+  const totalPnl     = benchmarks.reduce((a,b) => a + (b.summary?.net_pnl_dollars ?? 0), 0);
   const totalElapsed = benchmarks.reduce((a,b) => a + (b.summary?.elapsed_sec ?? 0), 0);
-  const winRate     = totalTrades > 0 ? (totalWins / totalTrades * 100) : 0;
-  const alertCount  = benchmarks.filter(b => b.status?.profitability === "fail" || b.status?.speed === "alert").length;
+  const winRate      = totalTrades > 0 ? (totalWins / totalTrades * 100) : 0;
+  const alertCount   = benchmarks.filter(b => benchmarkHasAlert(b)).length;
+
+  const symChips = allSymbols.length > 1 ? `
+    <div class="symbol-filter">
+      <span class="filter-label">Symbol:</span>
+      <button class="filter-chip${activeSym === null ? " active" : ""}" data-sym="">All</button>
+      ${allSymbols.map(sym =>
+        `<button class="filter-chip${activeSym === sym ? " active" : ""}" data-sym="${esc(sym)}">${esc(sym)}</button>`
+      ).join("")}
+    </div>` : "";
 
   pane.innerHTML = `
-    <!-- Aggregate stat row -->
+    ${symChips}
     <div class="stat-row">
       ${statCard("Total trades", totalTrades, "")}
       ${statCard("Win rate", fmt(winRate, 1) + "%", "across all months & symbols")}
       ${statCard("Net PnL", currency.format(totalPnl), "all months combined", totalPnl >= 0 ? "var(--good)" : "var(--danger)")}
       ${statCard("Runtime", fmt(totalElapsed, 1) + "s", "total across benchmarks")}
-      ${statCard("Alerts", alertCount || "✓", alertCount ? "regressions" : "all passing", alertCount > 0 ? "var(--danger)" : "var(--good)")}
+      ${statCard("Alerts", alertCount || "✓", alertCount ? "vs previous run" : "no changes vs prev run", alertCount > 0 ? "var(--danger)" : "var(--good)")}
     </div>
 
-    <!-- Alerts -->
     <div class="alerts-list" id="alerts-${esc(nickname)}"></div>
 
-    <!-- Month-by-month view -->
     <div class="month-grid-wrap">
       <p class="eyebrow">Month-by-month breakdown</p>
       <div class="month-grid" id="months-${esc(nickname)}"></div>
     </div>
 
-    <!-- Scope & reproducibility -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div class="panel" style="padding:18px" id="scope-${esc(nickname)}"></div>
       <div class="panel" style="padding:18px" id="integrity-${esc(nickname)}"></div>
     </div>
   `;
 
+  // Wire symbol filter chip clicks
+  pane.querySelectorAll(".filter-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      state.tabSymFilter[nickname] = chip.dataset.sym || null;
+      renderTabPane(nickname, stratGroups);
+    });
+  });
+
   renderPaneAlerts(nickname, benchmarks);
   renderPaneMonths(nickname, benchmarks);
-  // Read scope from the suite-level history.benchmarks (reflects current YAML config),
-  // falling back to the run benchmark when not available.
   const suiteMeta = (state.history?.benchmarks ?? []).find(b => b.id === (benchmarks[0]?.id ?? ""));
   renderPaneScope(nickname, suiteMeta ?? benchmarks[0] ?? null);
   renderPaneIntegrity(nickname, latestRun);
+  renderPaneHistoryCharts(nickname, grp, activeSym);
+}
+
+// ── Per-strategy history charts ───────────────────────────────────────────────
+function renderPaneHistoryCharts(nickname, grp, activeSym) {
+  const pane = document.getElementById(`pane-${nickname}`);
+  if (!pane) return;
+  let chartSection = pane.querySelector(".pane-history-charts");
+  if (!chartSection) {
+    chartSection = document.createElement("div");
+    chartSection.className = "pane-history-charts";
+    chartSection.innerHTML = `
+      <p class="eyebrow" style="margin-top:24px;margin-bottom:8px">PnL &amp; runtime over time</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="panel" style="padding:12px"><div id="pane-pnl-${esc(nickname)}" style="height:200px"></div></div>
+        <div class="panel" style="padding:12px"><div id="pane-rt-${esc(nickname)}" style="height:200px"></div></div>
+      </div>`;
+    pane.appendChild(chartSection);
+  }
+
+  const runs = getDeduplicatedRuns();
+  const dates = runs.map(r => r.date);
+
+  if (activeSym) {
+    const colour = cssVar(PALETTE[0]);
+    const pnlYs = runs.map(run =>
+      (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
+        .flatMap(b => b.symbols ?? []).filter(s => s.symbol === activeSym)
+        .reduce((a, s) => a + (s.summary?.net_pnl_dollars ?? 0), 0));
+    const rtYs = runs.map(run =>
+      (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
+        .flatMap(b => b.symbols ?? []).filter(s => s.symbol === activeSym)
+        .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0));
+    plot(`pane-pnl-${nickname}`, [{ type:"bar", name: activeSym, x: dates, y: pnlYs,
+      marker: { color: pnlYs.map(v => v >= 0 ? "rgba(111,217,143,0.85)" : "rgba(255,123,97,0.85)") } }],
+      { yaxis: { title: "USD" }, margin: { t:6, r:8, b:36, l:52 } });
+    plot(`pane-rt-${nickname}`, [{ type:"scatter", mode:"lines+markers", name: activeSym, x: dates, y: rtYs,
+      line: { color: colour, width: 2 }, marker: { size: 5, color: colour } }],
+      { yaxis: { title: "Seconds" }, margin: { t:6, r:8, b:36, l:52 } });
+  } else {
+    const symbolSet = new Set();
+    for (const run of runs)
+      for (const b of (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname))
+        for (const s of (b.symbols ?? [])) symbolSet.add(s.symbol);
+    const symbols = [...symbolSet].sort();
+    const pnlTraces = symbols.map((sym, i) => {
+      const colour = cssVar(PALETTE[i % PALETTE.length]);
+      const ys = runs.map(run =>
+        (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
+          .flatMap(b => b.symbols ?? []).filter(s => s.symbol === sym)
+          .reduce((a, s) => a + (s.summary?.net_pnl_dollars ?? 0), 0));
+      return { type:"bar", name: sym, x: dates, y: ys, marker: { color: colour, opacity: 0.85 } };
+    });
+    const rtTraces = symbols.map((sym, i) => {
+      const colour = cssVar(PALETTE[i % PALETTE.length]);
+      const ys = runs.map(run =>
+        (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
+          .flatMap(b => b.symbols ?? []).filter(s => s.symbol === sym)
+          .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0));
+      return { type:"scatter", mode:"lines+markers", name: sym, x: dates, y: ys,
+        line: { color: colour, width: 1.5 }, marker: { size: 4, color: colour } };
+    });
+    plot(`pane-pnl-${nickname}`, pnlTraces, { barmode: "stack", yaxis: { title: "USD" }, margin: { t:6, r:8, b:36, l:52 } });
+    plot(`pane-rt-${nickname}`, rtTraces, { yaxis: { title: "Seconds" }, margin: { t:6, r:8, b:36, l:52 } });
+  }
 }
 
 function statCard(label, value, meta, color = "") {
@@ -430,27 +633,33 @@ function statCard(label, value, meta, color = "") {
   </div>`;
 }
 
-// ── Per-pane: alerts ──────────────────────────────────────────────────────────
+// ── Per-pane: alerts (consecutive-run comparison) ─────────────────────────────
 function renderPaneAlerts(nickname, benchmarks) {
   const el = document.getElementById(`alerts-${nickname}`);
   if (!el) return;
   const cards = [];
   for (const b of benchmarks) {
     const label = b.window ? `${b.window.start} → ${b.window.end}` : b.public_name;
-    if (b.status?.profitability === "fail") {
-      cards.push({ kind: "alert", title: `${label}: profitability drift`, body: `${b.baseline?.symbol_breaches?.length ?? 0} symbol breach(es) against regression baseline.` });
+    if (hasConsecutiveFingerprintChange(b.id)) {
+      cards.push({ kind: "alert",
+        title: `${label}: result fingerprint changed vs previous run`,
+        body: "The trade output hash differs from the prior monitoring run. This indicates a code or data change that affected results." });
+    }
+    if (hasConsecutivePnlDrift(b.id)) {
+      cards.push({ kind: "warn",
+        title: `${label}: PnL drift vs previous run`,
+        body: "Net PnL shifted by more than 5% compared to the preceding run. Review recent changes for unintended impact." });
     }
     if (b.status?.speed === "alert") {
-      cards.push({ kind: "warn", title: `${label}: runtime anomaly`, body: "Latest runtime exceeds the tracked upper runtime band." });
-    }
-    if (b.status?.fingerprint === "changed") {
-      cards.push({ kind: b.status.input_changed_since_last_real_run ? "warn" : "alert",
-        title: `${label}: result fingerprint changed`,
-        body: b.status.input_changed_since_last_real_run ? "Fingerprint changed with input — looks like input drift." : "Fingerprint changed with stable inputs — stronger regression signal." });
+      cards.push({ kind: "warn",
+        title: `${label}: runtime anomaly`,
+        body: "Latest runtime exceeds the tracked upper runtime band." });
     }
   }
   if (!cards.length) {
-    cards.push({ kind: "pass", title: "No active regression alerts", body: "All benchmarks for this strategy are within expected bounds." });
+    cards.push({ kind: "pass",
+      title: "No regressions vs previous run",
+      body: "Results and PnL are consistent with the preceding monitoring run." });
   }
   el.innerHTML = cards.map(c => `
     <article class="alert-card ${c.kind}">
@@ -465,15 +674,16 @@ function renderPaneMonths(nickname, benchmarks) {
   const el = document.getElementById(`months-${nickname}`);
   if (!el) return;
 
-  // compute max |pnl| for bar-width scaling
   const maxAbsPnl = Math.max(1, ...benchmarks.map(b => Math.abs(b.summary?.net_pnl_dollars ?? 0)));
 
   el.innerHTML = benchmarks.map((b, idx) => {
     const pnl = b.summary?.net_pnl_dollars ?? 0;
     const pct = Math.min(100, Math.abs(pnl) / maxAbsPnl * 100);
     const barColor = pnl >= 0 ? "var(--good)" : "var(--danger)";
-    const alertBadge = (b.status?.profitability === "fail" || b.status?.speed === "alert")
-      ? `<span class="pill alert" style="margin-left:8px;font-size:.7rem">alert</span>` : "";
+    // Use consecutive-run comparison for the ⚠ changed badge
+    const hasAlert = hasConsecutiveFingerprintChange(b.id) || hasConsecutivePnlDrift(b.id);
+    const alertBadge = hasAlert
+      ? `<span class="pill alert" style="margin-left:8px;font-size:.7rem">⚠ changed</span>` : "";
     const label = b.window
       ? (b.window.start.slice(0, 7) === b.window.end.slice(0, 7)
           ? b.window.start.slice(0, 7)
@@ -504,23 +714,31 @@ function renderPaneMonths(nickname, benchmarks) {
 
 function buildSymbolTable(benchmark) {
   const rows = benchmark.symbols ?? [];
-  const breaches = new Map((benchmark.baseline?.symbol_breaches ?? []).map(s => [s.symbol, s]));
+  const prev = getPreviousRun();
+  const prevBench = prev ? (prev.benchmarks ?? []).find(b => b.id === benchmark.id) : null;
   if (!rows.length) return `<p class="empty-state" style="padding:12px">No per-symbol data.</p>`;
   return `<div class="table-wrap"><table>
     <thead><tr>
-      <th>Symbol</th><th>Trades</th><th>Win rate</th><th>Net PnL</th><th>Runtime</th><th>Baseline</th><th>Fingerprint</th>
+      <th>Symbol</th><th>Trades</th><th>Win rate</th><th>Net PnL</th><th>Runtime</th><th>vs Prev Run</th><th>Fingerprint</th>
     </tr></thead>
     <tbody>${rows.map(row => {
       const s = row.summary ?? {};
-      const breach = breaches.get(row.symbol);
-      const baseLabel = breach ? `drift ${fmtS(breach.pnl_delta, 2)}` : "match";
+      const prevRow = prevBench ? (prevBench.symbols ?? []).find(pr => pr.symbol === row.symbol) : null;
+      const prevPnl = prevRow?.summary?.net_pnl_dollars ?? null;
+      const curPnl = s.net_pnl_dollars ?? 0;
+      let vsLabel = "n/a", vsPill = "pass";
+      if (prevPnl !== null) {
+        const delta = curPnl - prevPnl;
+        vsLabel = (delta >= 0 ? "+" : "") + currency.format(delta);
+        vsPill = Math.abs(delta) > Math.abs(prevPnl || 1) * 0.05 ? "alert" : "pass";
+      }
       return `<tr>
         <td><strong>${esc(row.symbol)}</strong></td>
         <td>${s.trade_count ?? 0}</td>
         <td>${fmt(s.win_rate_pct, 1)}%</td>
-        <td style="color:${(s.net_pnl_dollars ?? 0) >= 0 ? "var(--good)" : "var(--danger)"}">${currency.format(s.net_pnl_dollars ?? 0)}</td>
+        <td style="color:${curPnl >= 0 ? "var(--good)" : "var(--danger)"}">${currency.format(curPnl)}</td>
         <td>${fmt(s.elapsed_sec, 2)}s</td>
-        <td><span class="pill ${breach ? "alert" : "pass"}">${esc(baseLabel)}</span></td>
+        <td><span class="pill ${vsPill}">${esc(vsLabel)}</span></td>
         <td style="font-family:monospace;font-size:0.8rem;color:var(--ink-muted)">${esc((s.result_fingerprint ?? "").slice(0,10))}</td>
       </tr>`;
     }).join("")}</tbody>
