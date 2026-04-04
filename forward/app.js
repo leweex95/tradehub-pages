@@ -68,7 +68,9 @@ function plot(id, traces, extra = {}) {
 }
 
 // ── Boot ─────────────────────────────────────────────────────
-fetch("forward_data.json")
+// Append a cache-buster so the browser always fetches the latest JSON
+// rather than serving a cached version.
+fetch("forward_data.json?v=" + Date.now())
   .then(r => r.json())
   .then(data => {
     state.data = data;
