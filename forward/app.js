@@ -298,19 +298,27 @@ function renderStrategyFilter() {
   const el = document.getElementById("strategy-filter");
   if (!el) return;
   const byStrat = state.data.stats?.by_strategy ?? {};
-  const strats  = Object.keys(byStrat).sort();
-  if (!strats.length) { el.innerHTML = ""; return; }
+  // Use traded strategies first; fall back to deployed_strategies list from payload
+  const tradedStrats = Object.keys(byStrat).sort();
+  const allKnown = state.data.deployed_strategies ?? [];
+  const merged = [...new Set([...tradedStrats, ...allKnown])].sort();
+  if (!merged.length) { el.innerHTML = ""; return; }
 
-  const pills = ["all", ...strats];
+  const pills = ["all", ...merged];
   el.innerHTML = `
     <div class="strat-filter-inner">
       <span class="filter-label">Strategy</span>
       <div class="strat-pills">
-        ${pills.map(s => `
+        ${pills.map(s => {
+          const cnt = byStrat[s]?.total_trades;
+          const badge = (s !== "all" && cnt !== undefined)
+            ? ` <span class="pill-count">${cnt}</span>` : "";
+          return `
           <button class="strat-pill ${s === state.activeStrategy ? "active" : ""}"
                   data-strat="${esc(s)}">
-            ${s === "all" ? "All strategies" : esc(s)}
-          </button>`).join("")}
+            ${s === "all" ? "All strategies" : esc(s)}${badge}
+          </button>`;
+        }).join("")}
       </div>
     </div>`;
 
