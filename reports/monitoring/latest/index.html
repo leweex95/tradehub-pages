@@ -20,7 +20,6 @@
         <div id="header-status" class="header-status"></div>
         <nav class="header-nav" aria-label="Site navigation">
           <a href="../../../index.html" class="header-nav-link">Home</a>
-          <a href="../../../forward/index.html" class="header-nav-link forward-link">⚡ Forward Testing</a>
         </nav>
         <button id="theme-toggle" class="theme-btn" aria-label="Toggle theme" title="Toggle dark / light">
           <span class="theme-icon theme-icon-dark">
@@ -97,6 +96,19 @@
     </footer>
 
   </main>
+  <!-- ── Trade visualization modal ───────────────────────────────────────── -->
+  <div id="trade-modal" class="trade-modal-overlay" role="dialog" aria-modal="true" aria-label="Trade detail">
+    <div class="trade-modal">
+      <button class="modal-close" id="modal-close-btn" aria-label="Close">&times;</button>
+      <div class="modal-header">
+        <h3 id="modal-title"></h3>
+        <div class="modal-chips" id="modal-chips"></div>
+      </div>
+      <div id="modal-chart" class="modal-chart"></div>
+      <div class="modal-stats" id="modal-stats"></div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

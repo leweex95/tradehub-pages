@@ -14,6 +14,9 @@ const state = {
   tabSymFilter: {},    // { nickname: symbol | null }
 };
 
+// Store for benchmark trades (keyed by benchmarkId_runIdx) — used by modal
+const _benchmarkTrades = {};
+
 // Apply theme immediately — HTML already has data-theme="dark" as safe fallback
 document.documentElement.dataset.theme = state.theme;
 
@@ -230,6 +233,16 @@ function renderStratFilter(stratGroups) {
       state.stratFilter = btn.dataset.strat || null;
       renderStratFilter(stratGroups);
       renderAggCharts(stratGroups);
+      // Sync the in-depth strategy tab
+      if (state.stratFilter) {
+        state.activeTab = state.stratFilter;
+        document.querySelectorAll(".tab-btn").forEach(b =>
+          b.classList.toggle("active", b.dataset.tab === state.stratFilter));
+        document.querySelectorAll(".tab-pane").forEach(p =>
+          p.classList.toggle("active", p.id === `pane-${state.stratFilter}`));
+        renderTabPane(state.stratFilter, stratGroups);
+        document.getElementById("tabs-bar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     });
   });
 }
@@ -261,17 +274,20 @@ function renderAggCharts(stratGroups) {
     });
     const rtTraces = symbols.map((sym, i) => {
       const colour = cssVar(PALETTE[i % PALETTE.length]);
-      const ys = runs.map(run =>
-        (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname)
+      const xs = [], ys = [];
+      for (const run of runs) {
+        const v = (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname)
           .flatMap(b => b.symbols ?? []).filter(s => s.symbol === sym)
-          .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0));
-      return { type: "scatter", mode: "lines+markers", name: sym, x: dates, y: ys,
+          .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0);
+        if (v > 0) { xs.push(run.date); ys.push(v); }
+      }
+      return { type: "scatter", mode: "lines+markers", name: sym, x: xs, y: ys,
         line: { color: colour, width: 2 }, marker: { color: colour, size: 5 },
         hovertemplate: `<b>${esc(sym)}</b><br>%{x}: %{y:.2f}s<extra></extra>` };
     });
 
     plot("agg-pnl-chart", pnlTraces, { barmode: "stack", xaxis: { type: "category" }, yaxis: { title: "USD" } });
-    plot("agg-runtime-chart", rtTraces, { yaxis: { title: "Seconds" } });
+    plot("agg-runtime-chart", rtTraces, { xaxis: { type: "category" }, yaxis: { title: "Seconds" } });
     document.getElementById("agg-pnl-note").textContent = `Per-symbol net PnL for ${grp.public_name} — one bar per run date.`;
     document.getElementById("agg-runtime-note").textContent = `Per-symbol runtime breakdown for ${grp.public_name}.`;
     return;
@@ -291,7 +307,7 @@ function renderAggCharts(stratGroups) {
       line: { color: colour, width: 2.5 }, marker: { color: colour, size: 6 },
       hovertemplate: `<b>${esc(grp.public_name)}</b><br>%{x}: %{y:.2f}s<extra></extra>` };
   });
-  plot("agg-runtime-chart", rtTraces, { yaxis: { title: "Total seconds" } });
+  plot("agg-runtime-chart", rtTraces, { xaxis: { type: "category" }, yaxis: { title: "Total seconds" } });
   document.getElementById("agg-runtime-note").textContent = "Sum of all benchmark runtimes per run date across each strategy.";
 
   const pnlTraces = stratGroups.map((grp, i) => {
@@ -404,7 +420,7 @@ function renderTabPane(nickname, stratGroups) {
     <div class="alerts-list" id="alerts-${esc(nickname)}"></div>
 
     <div class="month-grid-wrap">
-      <p class="eyebrow">Month-by-month breakdown</p>
+      <p class="eyebrow">Benchmark windows</p>
       <div class="month-grid" id="months-${esc(nickname)}"></div>
     </div>
 
@@ -452,20 +468,23 @@ function renderPaneHistoryCharts(nickname, grp, activeSym) {
 
   if (activeSym) {
     const colour = cssVar(PALETTE[0]);
-    const pnlYs = runs.map(run =>
-      (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
+    const pnlXs = [], pnlYs = [], rtXs = [], rtYs = [];
+    for (const run of runs) {
+      const pv = (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
         .flatMap(b => b.symbols ?? []).filter(s => s.symbol === activeSym)
-        .reduce((a, s) => a + (s.summary?.net_pnl_dollars ?? 0), 0));
-    const rtYs = runs.map(run =>
-      (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
+        .reduce((a, s) => a + (s.summary?.net_pnl_dollars ?? 0), 0);
+      pnlXs.push(run.date); pnlYs.push(pv);
+      const rv = (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
         .flatMap(b => b.symbols ?? []).filter(s => s.symbol === activeSym)
-        .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0));
-    plot(`pane-pnl-${nickname}`, [{ type:"bar", name: activeSym, x: dates, y: pnlYs,
+        .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0);
+      if (rv > 0) { rtXs.push(run.date); rtYs.push(rv); }
+    }
+    plot(`pane-pnl-${nickname}`, [{ type:"bar", name: activeSym, x: pnlXs, y: pnlYs,
       marker: { color: pnlYs.map(v => v >= 0 ? "rgba(111,217,143,0.85)" : "rgba(255,123,97,0.85)") } }],
       { xaxis: { type: "category" }, yaxis: { title: "USD" }, margin: { t:6, r:8, b:36, l:52 } });
-    plot(`pane-rt-${nickname}`, [{ type:"scatter", mode:"lines+markers", name: activeSym, x: dates, y: rtYs,
+    plot(`pane-rt-${nickname}`, [{ type:"scatter", mode:"lines+markers", name: activeSym, x: rtXs, y: rtYs,
       line: { color: colour, width: 2 }, marker: { size: 5, color: colour } }],
-      { yaxis: { title: "Seconds" }, margin: { t:6, r:8, b:36, l:52 } });
+      { xaxis: { type: "category" }, yaxis: { title: "Seconds" }, margin: { t:6, r:8, b:36, l:52 } });
   } else {
     const symbolSet = new Set();
     for (const run of runs)
@@ -482,15 +501,18 @@ function renderPaneHistoryCharts(nickname, grp, activeSym) {
     });
     const rtTraces = symbols.map((sym, i) => {
       const colour = cssVar(PALETTE[i % PALETTE.length]);
-      const ys = runs.map(run =>
-        (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
+      const xs = [], ys = [];
+      for (const run of runs) {
+        const v = (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
           .flatMap(b => b.symbols ?? []).filter(s => s.symbol === sym)
-          .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0));
-      return { type:"scatter", mode:"lines+markers", name: sym, x: dates, y: ys,
+          .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0);
+        if (v > 0) { xs.push(run.date); ys.push(v); }
+      }
+      return { type:"scatter", mode:"lines+markers", name: sym, x: xs, y: ys,
         line: { color: colour, width: 1.5 }, marker: { size: 4, color: colour } };
     });
     plot(`pane-pnl-${nickname}`, pnlTraces, { barmode: "stack", xaxis: { type: "category" }, yaxis: { title: "USD" }, margin: { t:6, r:8, b:36, l:52 } });
-    plot(`pane-rt-${nickname}`, rtTraces, { yaxis: { title: "Seconds" }, margin: { t:6, r:8, b:36, l:52 } });
+    plot(`pane-rt-${nickname}`, rtTraces, { xaxis: { type: "category" }, yaxis: { title: "Seconds" }, margin: { t:6, r:8, b:36, l:52 } });
   }
 }
 
@@ -567,6 +589,7 @@ function renderPaneMonths(nickname, benchmarks) {
       </div>
       <div class="month-detail" id="md-${esc(nickname)}-${idx}">
         ${buildSymbolTable(b)}
+        ${buildTradesSection(b)}
       </div>
     `;
   }).join("");
@@ -667,3 +690,208 @@ function renderFooter() {
   const ref = state.history?.reference ?? {};
   el.textContent = `Generated ${state.history?.generated_at ?? "n/a"} · commit ${r?.repo?.short_commit ?? "unknown"} · baseline ${ref.baseline_commit ?? "not tagged"} · public output contains hashes and aggregates only`;
 }
+
+// ── Trades section inside month detail ───────────────────────────────────────
+function buildTradesSection(benchmark) {
+  const allTrades = [];
+  for (const row of (benchmark.symbols ?? [])) {
+    for (const t of (row.trades ?? [])) {
+      allTrades.push({ ...t, _sym: row.symbol });
+    }
+  }
+  if (!allTrades.length) return "";
+
+  const key = benchmark.id;
+  _benchmarkTrades[key] = allTrades;
+
+  const pxFmt = v => {
+    const n = Number(v);
+    if (isNaN(n) || n === 0) return "—";
+    return n < 10 ? n.toFixed(5) : n.toFixed(2);
+  };
+
+  const rows = allTrades.map((t, i) => {
+    const pnl = t.pnl_net ?? 0;
+    const isWin = pnl > 0;
+    const exitClass = t.exit_reason === "tp" ? "tp" : t.exit_reason === "sl" ? "sl" : "neutral";
+    return `<tr class="trade-row" data-tkey="${esc(key)}" data-tidx="${i}">
+      <td><strong>${esc(t._sym)}</strong></td>
+      <td><span class="badge badge-${esc(t.direction || '')}">${esc((t.direction || '').toUpperCase())}</span></td>
+      <td>${esc(String(t.entry_time || '').replace('T', ' ').slice(0, 19))}</td>
+      <td>${esc(String(t.exit_time  || '').replace('T', ' ').slice(0, 19))}</td>
+      <td style="font-size:.8rem">${pxFmt(t.entry_price)}</td>
+      <td style="font-size:.8rem">${pxFmt(t.exit_price)}</td>
+      <td style="color:${isWin ? 'var(--good)' : 'var(--danger)'}; font-weight:600">${isWin ? '+' : ''}${Number(pnl).toFixed(2)}</td>
+      <td>${esc(t.bars_held ?? '')}</td>
+      <td><span class="badge badge-${exitClass}">${esc(t.exit_reason || '—')}</span></td>
+    </tr>`;
+  }).join("");
+
+  return `
+    <div class="trades-section">
+      <details>
+        <summary class="trades-summary">&#9654; ${allTrades.length} individual trades — click to expand (click row to visualize)</summary>
+        <div class="table-wrap" style="margin-top:8px">
+          <table>
+            <thead><tr>
+              <th>Symbol</th><th>Dir</th><th>Entry time</th><th>Exit time</th>
+              <th>Entry px</th><th>Exit px</th><th>P&amp;L</th><th>Bars</th><th>Exit</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </details>
+    </div>`;
+}
+
+// ── Trade Modal ───────────────────────────────────────────────────────────────
+function openTradeModal(trade) {
+  const modal = document.getElementById("trade-modal");
+  if (!modal) return;
+
+  const sym  = trade._sym || trade.symbol || trade.instrument || "—";
+  const dir  = String(trade.direction || "").toLowerCase();
+  const entX = String(trade.entry_time || "");
+  const extX = String(trade.exit_time  || "");
+  const entY = Number(trade.entry_price || 0);
+  const extY = Number(trade.exit_price  || 0);
+  const sl   = Number(trade.stop_loss  || trade.sl  || 0);
+  const tp   = Number(trade.take_profit || trade.tp || 0);
+  const pnl  = Number(trade.pnl_net || trade.pnl_usd || 0);
+  const isWin = pnl > 0;
+  const exitReason = trade.exit_reason || "—";
+  const bars = trade.bars_held ?? "—";
+  const lots = trade.lots ?? "—";
+
+  const pxFmt  = v => { const n = Number(v); return n < 10 ? n.toFixed(5) : n.toFixed(2); };
+  const dirCol  = dir === "buy" ? cssVar("--good") : cssVar("--warn");
+  const pnlCol  = isWin ? cssVar("--good") : cssVar("--danger");
+
+  document.getElementById("modal-title").textContent = `${sym} — ${dir.toUpperCase()} trade`;
+
+  const chipsEl = document.getElementById("modal-chips");
+  chipsEl.innerHTML = [
+    `<span class="modal-chip chip-${dir}">${dir.toUpperCase()}</span>`,
+    `<span class="modal-chip chip-neutral">${esc(sym)}</span>`,
+    `<span class="modal-chip chip-${isWin ? 'win' : 'loss'}">${isWin ? '+' : ''}${pnl.toFixed(2)} USD</span>`,
+    `<span class="modal-chip chip-${exitReason === 'tp' ? 'tp' : exitReason === 'sl' ? 'sl' : 'neutral'}">${esc(exitReason)} exit</span>`,
+  ].join("");
+
+  // Build Plotly chart
+  const allY = [entY, extY, sl, tp].filter(v => v > 0);
+  const yMin = Math.min(...allY) * (dir === "buy" ? 0.9997 : 1.0003);
+  const yMax = Math.max(...allY) * (dir === "buy" ? 1.0003 : 0.9997);
+
+  const traces = [
+    // Entry → Exit connecting line
+    { type: "scatter", mode: "lines",
+      x: [entX, extX], y: [entY, extY],
+      line: { color: pnlCol, width: 2.5, dash: "dot" },
+      showlegend: false, hoverinfo: "skip" },
+    // Entry marker
+    { type: "scatter", mode: "markers+text",
+      x: [entX], y: [entY],
+      marker: { symbol: dir === "buy" ? "triangle-up" : "triangle-down", size: 16, color: dirCol },
+      text: ["Entry"], textposition: "top center",
+      textfont: { color: dirCol, size: 11 },
+      showlegend: false,
+      hovertemplate: `<b>Entry</b><br>Price: ${pxFmt(entY)}<br>Time: ${esc(entX.replace("T"," ").slice(0,19))}<extra></extra>` },
+    // Exit marker
+    { type: "scatter", mode: "markers+text",
+      x: [extX], y: [extY],
+      marker: { symbol: "x", size: 14, color: pnlCol, line: { width: 2 } },
+      text: ["Exit"], textposition: "top center",
+      textfont: { color: pnlCol, size: 11 },
+      showlegend: false,
+      hovertemplate: `<b>Exit</b><br>Price: ${pxFmt(extY)}<br>Time: ${esc(extX.replace("T"," ").slice(0,19))}<extra></extra>` },
+  ];
+
+  const shapes = [];
+  const annotations = [];
+
+  if (sl > 0) {
+    shapes.push({ type: "line", x0: entX, x1: extX, y0: sl, y1: sl,
+      line: { color: "rgba(255,123,97,0.65)", width: 1.5, dash: "dash" } });
+    annotations.push({ x: extX, y: sl, text: `SL ${pxFmt(sl)}`,
+      showarrow: false, xanchor: "right", font: { size: 10, color: "rgba(255,123,97,0.85)" },
+      bgcolor: "rgba(0,0,0,0)" });
+  }
+  if (tp > 0) {
+    shapes.push({ type: "line", x0: entX, x1: extX, y0: tp, y1: tp,
+      line: { color: "rgba(111,217,143,0.65)", width: 1.5, dash: "dash" } });
+    annotations.push({ x: extX, y: tp, text: `TP ${pxFmt(tp)}`,
+      showarrow: false, xanchor: "right", font: { size: 10, color: "rgba(111,217,143,0.85)" },
+      bgcolor: "rgba(0,0,0,0)" });
+  }
+
+  const layout = {
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+    margin: { t: 16, r: 90, b: 52, l: 70 },
+    hovermode: "closest",
+    font: { color: cssVar("--ink-muted"), size: 12, family: "Inter, Segoe UI, sans-serif" },
+    xaxis: { type: "date", tickformat: "%Y-%m-%d %H:%M", tickangle: -25,
+      gridcolor: cssVar("--plot-grid"), linecolor: cssVar("--plot-grid"),
+      tickfont: { color: cssVar("--ink-muted"), size: 10 } },
+    yaxis: { tickformat: entY < 10 ? ".5f" : ".2f",
+      gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"),
+      tickfont: { color: cssVar("--ink-muted"), size: 10 },
+      range: [yMin, yMax] },
+    shapes,
+    annotations,
+  };
+
+  const el = document.getElementById("modal-chart");
+  Plotly.react(el, traces, layout, { responsive: true, displaylogo: false,
+    modeBarButtonsToRemove: ["lasso2d","select2d","autoScale2d","toImage"] });
+
+  // Stats row
+  const statsEl = document.getElementById("modal-stats");
+  const msc = (label, val, color) =>
+    `<div class="modal-stat-card">
+       <span class="modal-stat-label">${esc(label)}</span>
+       <span class="modal-stat-value" style="${color ? 'color:'+color : ''}">${esc(String(val))}</span>
+     </div>`;
+  statsEl.innerHTML = [
+    msc("Entry price",  pxFmt(entY), ""),
+    msc("Exit price",   pxFmt(extY), ""),
+    sl > 0 ? msc("Stop loss",   pxFmt(sl),  "var(--danger)") : "",
+    tp > 0 ? msc("Take profit", pxFmt(tp),  "var(--good)")   : "",
+    msc("P&L",          (pnl >= 0 ? "+" : "") + pnl.toFixed(2) + " USD", pnlCol),
+    msc("Bars held",    bars, ""),
+    lots !== "—" ? msc("Lots", lots, "") : "",
+    msc("Entry time",   String(entX || "—").replace("T"," ").slice(0,19), ""),
+    msc("Exit time",    String(extX || "—").replace("T"," ").slice(0,19), ""),
+    msc("Exit reason",  exitReason, ""),
+  ].filter(Boolean).join("");
+
+  modal.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeTradeModal() {
+  const modal = document.getElementById("trade-modal");
+  if (modal) { modal.classList.remove("open"); document.body.style.overflow = ""; }
+}
+
+// Wire modal close button + backdrop click + Escape key
+document.addEventListener("DOMContentLoaded", () => {
+  const closeBtn = document.getElementById("modal-close-btn");
+  if (closeBtn) closeBtn.addEventListener("click", closeTradeModal);
+
+  const overlay = document.getElementById("trade-modal");
+  if (overlay) {
+    overlay.addEventListener("click", e => { if (e.target === overlay) closeTradeModal(); });
+  }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeTradeModal(); });
+
+// Event delegation for all .trade-row clicks (monitoring + any future tables)
+document.addEventListener("click", e => {
+  const row = e.target.closest(".trade-row");
+  if (!row) return;
+  const tkey = row.dataset.tkey;
+  const tidx = parseInt(row.dataset.tidx, 10);
+  if (tkey && !isNaN(tidx) && _benchmarkTrades[tkey]) {
+    openTradeModal(_benchmarkTrades[tkey][tidx]);
+  }
+});

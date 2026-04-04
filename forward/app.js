@@ -19,6 +19,9 @@ const state = {
   theme:         localStorage.getItem(THEME_KEY) || "dark",
 };
 
+// Store for forward trades list — populated in renderTradeTable, used by modal event delegation
+let _forwardTrades = [];
+
 // Apply theme immediately to avoid flash
 document.documentElement.dataset.theme = state.theme;
 
@@ -106,6 +109,7 @@ function boot() {
   renderSymbolGrid();
   renderFilters();
   renderTradeTable();
+  renderDeployments();
   renderFooter();
 }
 
@@ -516,13 +520,16 @@ function renderTradeTable() {
     return;
   }
 
+  // Store sorted list so event delegation can look up by index
+  _forwardTrades = trades;
+
   const headerCells = COL_DEFS.map(c => {
     const cls = c.key === state.sortCol ? `sort-${state.sortDir}` : "";
     return `<th class="${cls}" data-col="${esc(c.key)}">${c.label}</th>`;
   }).join("");
 
-  const rows = trades.map(t =>
-    `<tr>${COL_DEFS.map(c => `<td>${c.fmt(t[c.key])}</td>`).join("")}</tr>`
+  const rows = trades.map((t, i) =>
+    `<tr class="trade-row" data-tidx="${i}">${COL_DEFS.map(c => `<td>${c.fmt(t[c.key])}</td>`).join("")}</tr>`
   ).join("");
 
   wrap.innerHTML = `
@@ -556,3 +563,183 @@ function renderFooter() {
     Generated ${esc(ts)} — <a href="../index.html">← TradeHub home</a>
     · <a href="../reports/monitoring/latest/index.html">Monitoring dashboard</a>`;
 }
+
+// ── Deployments section ───────────────────────────────────────
+function renderDeployments() {
+  const section = document.getElementById("deployments-section");
+  const grid    = document.getElementById("deployments-grid");
+  if (!section || !grid) return;
+
+  const deps = state.data?.deployments ?? [];
+  if (!deps.length) { section.style.display = "none"; return; }
+
+  section.style.display = "";
+
+  const fmtDate = iso => {
+    if (!iso) return "unknown";
+    try { return new Date(iso).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" }); }
+    catch { return String(iso).slice(0, 10); }
+  };
+
+  grid.innerHTML = deps.map(d => {
+    const brokerLabel = d.broker === "mt5" ? "MetaTrader 5" : d.broker === "alpaca" ? "Alpaca" : esc(d.broker || "—");
+    const typeLabel   = d.account_type === "demo" ? "Demo / Paper" : d.account_type === "live" ? "Live" : esc(d.account_type || "—");
+    const typeColor   = d.account_type === "live" ? "var(--good)" : "var(--warn)";
+    const broker      = (d.broker || "").toLowerCase();
+    const instruments = (d.instruments ?? []).map(i => `<span class="dep-instrument">${esc(i)}</span>`).join("");
+    const statusClass = d.status === "running" ? "dep-status-running" : d.status === "stale" ? "dep-status-stale" : "dep-status-unknown";
+    const statusLabel = d.status === "running" ? "● Running" : d.status === "stale" ? "⚠ Stale" : "○ Unknown";
+
+    return `
+      <div class="dep-card dep-${broker}">
+        <div class="dep-label">${esc(d.label || d.strategy || "—")}</div>
+        <div class="dep-meta">
+          <div class="dep-meta-row"><span class="dep-meta-key">Broker</span><span class="dep-meta-val">${brokerLabel}</span></div>
+          <div class="dep-meta-row"><span class="dep-meta-key">Account</span><span class="dep-meta-val" style="font-family:monospace">${esc(d.account_id || "—")}</span></div>
+          <div class="dep-meta-row"><span class="dep-meta-key">Type</span><span class="dep-meta-val" style="color:${typeColor};font-weight:600">${typeLabel}</span></div>
+          ${d.server ? `<div class="dep-meta-row"><span class="dep-meta-key">Server</span><span class="dep-meta-val" style="font-size:.8rem">${esc(d.server)}</span></div>` : ""}
+          <div class="dep-meta-row"><span class="dep-meta-key">Deployed</span><span class="dep-meta-val">${fmtDate(d.deployed_at)}</span></div>
+        </div>
+        ${instruments ? `<div class="dep-instruments">${instruments}</div>` : ""}
+        <div class="dep-status ${statusClass}">${statusLabel}</div>
+      </div>`;
+  }).join("");
+}
+
+// ── Trade Modal ───────────────────────────────────────────────
+function openTradeModal(trade) {
+  const modal = document.getElementById("trade-modal");
+  if (!modal) return;
+
+  const sym  = trade.symbol || trade.instrument || "—";
+  const dir  = String(trade.direction || "").toLowerCase();
+  const entX = String(trade.entry_time || "");
+  const extX = String(trade.exit_time  || "");
+  const entY = Number(trade.entry_price || trade.entry_px || 0);
+  const extY = Number(trade.exit_price  || trade.exit_px  || 0);
+  const sl   = Number(trade.sl || trade.stop_loss || 0);
+  const tp   = Number(trade.tp || trade.take_profit || 0);
+  const pnl  = Number(trade.pnl_usd || trade.pnl_net || 0);
+  const isWin = pnl > 0;
+  const exitReason = trade.exit_reason || "—";
+  const lots = trade.lots ?? "—";
+  const pnlR = trade.pnl_r != null ? `${pnl >= 0 ? "+" : ""}${Number(trade.pnl_r).toFixed(2)}R` : null;
+
+  const pxFmt   = v => { const n = Number(v); return n < 10 ? n.toFixed(5) : n.toFixed(2); };
+  const dirCol  = dir === "buy" ? cssVar("--good") : cssVar("--warn");
+  const pnlCol  = isWin ? cssVar("--good") : cssVar("--danger");
+
+  document.getElementById("modal-title").textContent = `${sym} — ${dir.toUpperCase()} trade`;
+
+  const chipsEl = document.getElementById("modal-chips");
+  chipsEl.innerHTML = [
+    `<span class="modal-chip chip-${dir}">${dir.toUpperCase()}</span>`,
+    `<span class="modal-chip chip-neutral">${esc(sym)}</span>`,
+    `<span class="modal-chip chip-${isWin ? "win" : "loss"}">${pnl >= 0 ? "+" : ""}${usd.format(pnl)}</span>`,
+    pnlR ? `<span class="modal-chip chip-neutral">${esc(pnlR)}</span>` : "",
+    `<span class="modal-chip chip-${exitReason === "tp" ? "tp" : exitReason === "sl" ? "sl" : "neutral"}">${esc(exitReason)} exit</span>`,
+  ].filter(Boolean).join("");
+
+  const allY = [entY, extY, sl, tp].filter(v => v > 0);
+  const yMin = Math.min(...allY) * 0.9997;
+  const yMax = Math.max(...allY) * 1.0003;
+
+  const traces = [
+    { type: "scatter", mode: "lines",
+      x: [entX, extX], y: [entY, extY],
+      line: { color: pnlCol, width: 2.5, dash: "dot" },
+      showlegend: false, hoverinfo: "skip" },
+    { type: "scatter", mode: "markers+text",
+      x: [entX], y: [entY],
+      marker: { symbol: dir === "buy" ? "triangle-up" : "triangle-down", size: 16, color: dirCol },
+      text: ["Entry"], textposition: "top center",
+      textfont: { color: dirCol, size: 11 },
+      showlegend: false,
+      hovertemplate: `<b>Entry</b><br>Price: ${pxFmt(entY)}<br>Time: ${esc(entX.replace("T"," ").slice(0,19))}<extra></extra>` },
+    { type: "scatter", mode: "markers+text",
+      x: [extX], y: [extY],
+      marker: { symbol: "x", size: 14, color: pnlCol, line: { width: 2 } },
+      text: ["Exit"], textposition: "top center",
+      textfont: { color: pnlCol, size: 11 },
+      showlegend: false,
+      hovertemplate: `<b>Exit</b><br>Price: ${pxFmt(extY)}<br>Time: ${esc(extX.replace("T"," ").slice(0,19))}<extra></extra>` },
+  ];
+
+  const shapes = [], annotations = [];
+  if (sl > 0) {
+    shapes.push({ type: "line", x0: entX, x1: extX, y0: sl, y1: sl,
+      line: { color: "rgba(255,123,97,0.65)", width: 1.5, dash: "dash" } });
+    annotations.push({ x: extX, y: sl, text: `SL ${pxFmt(sl)}`, showarrow: false,
+      xanchor: "right", font: { size: 10, color: "rgba(255,123,97,0.85)" }, bgcolor: "rgba(0,0,0,0)" });
+  }
+  if (tp > 0) {
+    shapes.push({ type: "line", x0: entX, x1: extX, y0: tp, y1: tp,
+      line: { color: "rgba(111,217,143,0.65)", width: 1.5, dash: "dash" } });
+    annotations.push({ x: extX, y: tp, text: `TP ${pxFmt(tp)}`, showarrow: false,
+      xanchor: "right", font: { size: 10, color: "rgba(111,217,143,0.85)" }, bgcolor: "rgba(0,0,0,0)" });
+  }
+
+  const layout = {
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+    margin: { t: 16, r: 90, b: 52, l: 70 },
+    hovermode: "closest",
+    font: { color: cssVar("--ink-muted"), size: 12, family: "Inter, Segoe UI, sans-serif" },
+    xaxis: { type: "date", tickformat: "%Y-%m-%d %H:%M", tickangle: -25,
+      gridcolor: cssVar("--plot-grid"), linecolor: cssVar("--plot-grid"),
+      tickfont: { color: cssVar("--ink-muted"), size: 10 } },
+    yaxis: { tickformat: entY < 10 ? ".5f" : ".2f",
+      gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"),
+      tickfont: { color: cssVar("--ink-muted"), size: 10 },
+      range: [yMin, yMax] },
+    shapes, annotations,
+  };
+
+  const el = document.getElementById("modal-chart");
+  Plotly.react(el, traces, layout, { responsive: true, displaylogo: false,
+    modeBarButtonsToRemove: ["lasso2d","select2d","autoScale2d","toImage"] });
+
+  const statsEl = document.getElementById("modal-stats");
+  const msc = (label, val, color) =>
+    `<div class="modal-stat-card">
+       <span class="modal-stat-label">${esc(label)}</span>
+       <span class="modal-stat-value" style="${color ? "color:"+color : ""}">${esc(String(val))}</span>
+     </div>`;
+  statsEl.innerHTML = [
+    msc("Entry price", pxFmt(entY), ""),
+    msc("Exit price",  pxFmt(extY), ""),
+    sl > 0 ? msc("Stop loss",   pxFmt(sl), "var(--danger)") : "",
+    tp > 0 ? msc("Take profit", pxFmt(tp), "var(--good)")   : "",
+    msc("P&L", (pnl >= 0 ? "+" : "") + usd.format(pnl), pnlCol),
+    pnlR ? msc("R multiple", pnlR, pnlCol) : "",
+    lots !== "—" ? msc("Lots", lots, "") : "",
+    msc("Entry time", String(entX || "—").replace("T"," ").slice(0,19), ""),
+    msc("Exit time",  String(extX || "—").replace("T"," ").slice(0,19), ""),
+    msc("Exit reason", exitReason, ""),
+    trade.strategy ? msc("Strategy", trade.strategy, "") : "",
+  ].filter(Boolean).join("");
+
+  modal.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeTradeModal() {
+  const modal = document.getElementById("trade-modal");
+  if (modal) { modal.classList.remove("open"); document.body.style.overflow = ""; }
+}
+
+// Wire modal close button + backdrop click + Escape key
+document.addEventListener("DOMContentLoaded", () => {
+  const closeBtn = document.getElementById("modal-close-btn");
+  if (closeBtn) closeBtn.addEventListener("click", closeTradeModal);
+  const overlay = document.getElementById("trade-modal");
+  if (overlay) overlay.addEventListener("click", e => { if (e.target === overlay) closeTradeModal(); });
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeTradeModal(); });
+
+// Event delegation for clickable trade rows
+document.addEventListener("click", e => {
+  const row = e.target.closest(".trade-row");
+  if (!row) return;
+  const tidx = parseInt(row.dataset.tidx, 10);
+  if (!isNaN(tidx) && _forwardTrades[tidx]) openTradeModal(_forwardTrades[tidx]);
+});
