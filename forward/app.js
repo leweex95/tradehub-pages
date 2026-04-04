@@ -147,7 +147,8 @@ function renderHero() {
   const deployedAt = d.deployed_at ? d.deployed_at.slice(0, 10) : (d.period?.start ?? null);
   const periodEnd  = d.period?.end ?? null;
   let period;
-  if (deployedAt && periodEnd && deployedAt === periodEnd) {
+  const hasTrades = (d.stats?.total_trades ?? 0) > 0;
+  if (deployedAt && periodEnd && deployedAt === periodEnd && !hasTrades) {
     period = `Deployed ${deployedAt} (no closed trades yet)`;
   } else if (deployedAt && periodEnd) {
     period = `${deployedAt} \u2192 ${periodEnd}`;
