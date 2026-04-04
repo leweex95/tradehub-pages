@@ -15,7 +15,7 @@ const state = {
   filterStrategy: "all",
   filterSymbol:   "all",
   filterDirection: "all",
-  activeStratTab: null,
+  activeStrategy:  "all",
   theme:         localStorage.getItem(THEME_KEY) || "dark",
 };
 
@@ -99,8 +99,8 @@ window.addEventListener("resize", debounce(() => { if (state.data) renderCharts(
 function boot() {
   renderHero();
   renderHeaderStatus();
+  renderStrategyFilter();
   renderCharts();
-  renderStratTabs();
   renderSymbolGrid();
   renderFilters();
   renderTradeTable();
@@ -111,8 +111,6 @@ function renderCharts() {
   renderEquityChart();
   renderDailyChart();
   renderSymbolCharts();
-  // Redraw active strategy pane charts
-  if (state.activeStratTab) renderStratPane(state.activeStratTab);
 }
 
 // ── Header status ─────────────────────────────────────────────
@@ -132,35 +130,59 @@ function renderHeaderStatus() {
 
 // ── Hero ──────────────────────────────────────────────────────
 function renderHero() {
-  const el   = document.getElementById("hero");
+  const el = document.getElementById("hero");
   if (!el) return;
-  const d    = state.data;
-  const s    = d.stats;
-  const mode = d.mode;
+  const d          = state.data;
+  const isFiltered = state.activeStrategy !== "all";
+  const s          = isFiltered ? (d.stats.by_strategy?.[state.activeStrategy] ?? d.stats) : d.stats;
+  const mode       = d.mode;
 
-  const chip  = mode === "live"
+  const chip = mode === "live"
     ? `<span class="meta-chip chip-live"><span class="chip-dot"></span>Live account</span>`
     : `<span class="meta-chip chip-dummy"><span class="chip-dot"></span>Demo / Synthetic</span>`;
-  const period = `${d.period?.start ?? "n/a"} → ${d.period?.end ?? "n/a"}`;
 
+  // Period: prefer deployed_at (exact deployment date) over period.start (was 90d back)
+  const deployedAt = d.deployed_at ? d.deployed_at.slice(0, 10) : (d.period?.start ?? null);
+  const periodEnd  = d.period?.end ?? null;
+  let period;
+  if (deployedAt && periodEnd && deployedAt === periodEnd) {
+    period = `Deployed ${deployedAt} (no closed trades yet)`;
+  } else if (deployedAt && periodEnd) {
+    period = `${deployedAt} \u2192 ${periodEnd}`;
+  } else {
+    period = deployedAt ? `Deployed ${deployedAt}` : "n/a";
+  }
+
+  const eyebrow  = isFiltered
+    ? `Forward testing \u2014 ${state.activeStrategy}`
+    : "Forward testing \u2014 all strategies";
+  const headline = isFiltered
+    ? `<em>${s.total_trades ?? 0}</em> trades \u00b7 ${esc(state.activeStrategy)}`
+    : `<em>${s.total_trades}</em> trades forward deployed`;
+
+  const pnlVal = s.total_pnl_usd ?? s.total_pnl ?? 0;
   const kpis = [
-    { label: "Total trades",   value: s.total_trades,            color: "" },
-    { label: "Win rate",       value: fmt2(s.win_rate_pct) + "%", color: s.win_rate_pct >= 50 ? cssVar("--good") : cssVar("--warn") },
-    { label: "Net PnL",        value: usd.format(s.total_pnl_usd), color: pnlColor(s.total_pnl_usd) },
-    { label: "Return",         value: pct(s.return_pct),          color: pnlColor(s.return_pct) },
-    { label: "Profit factor",  value: fmt2(s.profit_factor),      color: s.profit_factor >= 1.5 ? cssVar("--good") : cssVar("--warn") },
-    { label: "Max drawdown",   value: fmt2(s.max_drawdown_pct) + "%", color: s.max_drawdown_pct > 15 ? cssVar("--danger") : "" },
-    { label: "Total R",        value: r(s.total_r),               color: pnlColor(s.total_r) },
+    { label: "Total trades",   value: s.total_trades ?? 0,            color: "" },
+    { label: "Win rate",       value: fmt2(s.win_rate_pct) + "%",     color: (s.win_rate_pct ?? 0) >= 50 ? cssVar("--good") : cssVar("--warn") },
+    { label: "Net PnL",        value: usd.format(pnlVal),             color: pnlColor(pnlVal) },
+    { label: "Return",         value: pct(s.return_pct),              color: pnlColor(s.return_pct) },
+    { label: "Profit factor",  value: fmt2(s.profit_factor),          color: (s.profit_factor ?? 0) >= 1.5 ? cssVar("--good") : cssVar("--warn") },
+    { label: "Max drawdown",   value: fmt2(s.max_drawdown_pct) + "%", color: (s.max_drawdown_pct ?? 0) > 15 ? cssVar("--danger") : "" },
+    { label: "Total R",        value: r(s.total_r),                   color: pnlColor(s.total_r) },
   ];
+
+  const equityDisplay = isFiltered
+    ? (s.initial_equity ?? d.stats?.initial_equity ?? 0)
+    : (s.initial_equity ?? 0);
 
   el.innerHTML = `
     <div class="hero-text">
-      <p class="eyebrow">Forward testing — all strategies</p>
-      <h1 class="hero-title"><em>${s.total_trades}</em> trades forward deployed</h1>
+      <p class="eyebrow">${esc(eyebrow)}</p>
+      <h1 class="hero-title">${headline}</h1>
       <div class="hero-meta">
         ${chip}
         <span>${esc(period)}</span>
-        <span>$${esc(s.initial_equity?.toLocaleString())} starting equity</span>
+        <span>$${esc(equityDisplay.toLocaleString())} starting equity</span>
       </div>
     </div>
     <div class="hero-kpis">
@@ -174,28 +196,87 @@ function renderHero() {
 
 // ── Equity curve ──────────────────────────────────────────────
 function renderEquityChart() {
-  const curve = state.data.equity_curve ?? [];
-  const xs = curve.map(p => p.time);
-  const ys = curve.map(p => p.equity);
-  const accentColor = cssVar("--c0");
-  const traces = [{
-    type: "scatter",
-    mode: "lines",
-    x: xs, y: ys,
-    line: { color: accentColor, width: 2.5 },
-    fill: "tozeroy",
-    fillcolor: accentColor + "18",
-    hovertemplate: "<b>%{x}</b><br>Equity: %{y:$,.2f}<extra></extra>",
-    name: "Equity",
-  }];
-  plot("equity-chart", traces, {
-    yaxis: { title: "Equity (USD)", tickprefix: "$" },
-  });
+  const d = state.data;
+
+  if (state.activeStrategy === "all") {
+    // Aggregate line + per-strategy dotted overlays
+    const curve = d.equity_curve ?? [];
+    const accentColor = cssVar("--c0");
+    const traces = [{
+      type: "scatter", mode: "lines",
+      x: curve.map(p => p.time), y: curve.map(p => p.equity),
+      line: { color: accentColor, width: 2.5 },
+      fill: "tozeroy", fillcolor: accentColor + "18",
+      hovertemplate: "<b>%{x}</b><br>Equity: %{y:$,.2f}<extra></extra>",
+      name: "All strategies",
+    }];
+
+    const byStrat = d.stats?.by_strategy ?? {};
+    Object.keys(byStrat).sort().forEach((name, i) => {
+      const stratTrades = (d.trades ?? [])
+        .filter(t => t.strategy === name)
+        .sort((a, b) => a.exit_time < b.exit_time ? -1 : 1);
+      if (!stratTrades.length) return;
+      let eq = byStrat[name].initial_equity ?? d.stats.initial_equity ?? 10000;
+      const pts = [{ x: stratTrades[0].entry_time, y: eq }];
+      for (const t of stratTrades) {
+        eq = Math.round((eq + (t.pnl_usd ?? 0)) * 100) / 100;
+        pts.push({ x: t.exit_time, y: eq });
+      }
+      const col = cssVar(PALETTE[i % PALETTE.length]);
+      traces.push({
+        type: "scatter", mode: "lines",
+        x: pts.map(p => p.x), y: pts.map(p => p.y),
+        line: { color: col, width: 1.5, dash: "dot" },
+        name,
+        hovertemplate: `<b>${esc(name)}</b><br>%{x}<br>%{y:$,.2f}<extra></extra>`,
+      });
+    });
+
+    plot("equity-chart", traces, { yaxis: { title: "Equity (USD)", tickprefix: "$" } });
+  } else {
+    // Single filtered strategy — compute equity from trades
+    const name      = state.activeStrategy;
+    const byStrat   = d.stats?.by_strategy ?? {};
+    const stratIdx  = Object.keys(byStrat).sort().indexOf(name);
+    const col       = cssVar(PALETTE[Math.max(0, stratIdx) % PALETTE.length]);
+    const stratTrades = (d.trades ?? [])
+      .filter(t => t.strategy === name)
+      .sort((a, b) => a.exit_time < b.exit_time ? -1 : 1);
+
+    let eq = byStrat[name]?.initial_equity ?? d.stats.initial_equity ?? 10000;
+    const pts = stratTrades.length ? [{ x: stratTrades[0].entry_time, y: eq }] : [];
+    for (const t of stratTrades) {
+      eq = Math.round((eq + (t.pnl_usd ?? 0)) * 100) / 100;
+      pts.push({ x: t.exit_time, y: eq });
+    }
+
+    const traces = pts.length ? [{
+      type: "scatter", mode: "lines",
+      x: pts.map(p => p.x), y: pts.map(p => p.y),
+      line: { color: col, width: 2.5 },
+      fill: "tozeroy", fillcolor: col + "18",
+      hovertemplate: "<b>%{x}</b><br>%{y:$,.2f}<extra></extra>",
+      name,
+    }] : [];
+
+    plot("equity-chart", traces, { yaxis: { title: "Equity (USD)", tickprefix: "$" } });
+  }
 }
 
 // ── Daily PnL bar chart ───────────────────────────────────────
 function renderDailyChart() {
-  const daily = state.data.stats?.daily_pnl ?? {};
+  const d = state.data;
+  let daily;
+  if (state.activeStrategy === "all") {
+    daily = d.stats?.daily_pnl ?? {};
+  } else {
+    daily = {};
+    for (const t of (d.trades ?? []).filter(t => t.strategy === state.activeStrategy)) {
+      const day = t.exit_time?.slice(0, 10);
+      if (day) daily[day] = (daily[day] ?? 0) + (t.pnl_usd ?? 0);
+    }
+  }
   const days  = Object.keys(daily).sort();
   const vals  = days.map(d => daily[d]);
   const colors = vals.map(v => v >= 0 ? cssVar("--good") : cssVar("--danger"));
@@ -212,113 +293,78 @@ function renderDailyChart() {
   });
 }
 
-// ── Strategy tabs ─────────────────────────────────────────────
-function renderStratTabs() {
+// ── Strategy filter pills ─────────────────────────────────────
+function renderStrategyFilter() {
+  const el = document.getElementById("strategy-filter");
+  if (!el) return;
   const byStrat = state.data.stats?.by_strategy ?? {};
   const strats  = Object.keys(byStrat).sort();
-  if (!strats.length) return;
+  if (!strats.length) { el.innerHTML = ""; return; }
 
-  state.activeStratTab = strats[0];
-
-  const bar   = document.getElementById("strat-tabs");
-  const panes = document.getElementById("strat-panes");
-  if (!bar || !panes) return;
-
-  bar.innerHTML = strats.map(s => `
-    <button class="tab-btn ${s === state.activeStratTab ? "active" : ""}"
-            role="tab" data-strat="${esc(s)}">${esc(s)}</button>`).join("");
-
-  panes.innerHTML = strats.map(s => `
-    <div class="tab-pane ${s === state.activeStratTab ? "active" : ""}"
-         id="strat-pane-${esc(s)}"></div>`).join("");
-
-  bar.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const s = btn.dataset.strat;
-      state.activeStratTab = s;
-      bar.querySelectorAll(".tab-btn").forEach(b =>
-        b.classList.toggle("active", b === btn));
-      panes.querySelectorAll(".tab-pane").forEach(p =>
-        p.classList.toggle("active", p.id === `strat-pane-${s}`));
-      renderStratPane(s);
-    });
-  });
-
-  renderStratPane(state.activeStratTab);
-}
-
-function renderStratPane(name) {
-  const pane = document.getElementById(`strat-pane-${name}`);
-  if (!pane) return;
-
-  const byStrat = state.data.stats?.by_strategy ?? {};
-  const s       = byStrat[name];
-  if (!s) { pane.innerHTML = `<p class="empty-state">No data for ${esc(name)}</p>`; return; }
-
-  const trades  = (state.data.trades ?? []).filter(t => t.strategy === name);
-  const daily   = {};
-  for (const t of trades) {
-    const day = t.exit_time?.slice(0, 10);
-    if (day) daily[day] = (daily[day] ?? 0) + t.pnl_usd;
-  }
-
-  pane.innerHTML = `
-    <div class="stat-row">
-      ${statCard("Trades",       s.total_trades ?? trades.length, "")}
-      ${statCard("Win rate",     fmt2(s.win_rate_pct ?? s.win_rate) + "%",  s.win_rate_pct >= 50 ? "var(--good)" : "var(--warn)")}
-      ${statCard("Net PnL",      usd.format(s.total_pnl ?? s.total_pnl_usd ?? 0), pnlColor(s.total_pnl ?? 0))}
-      ${statCard("Total R",      r(s.total_r ?? 0), pnlColor(s.total_r ?? 0))}
-      ${statCard("Profit factor", fmt2(s.profit_factor), (s.profit_factor ?? 1) >= 1.5 ? "var(--good)" : "var(--warn)")  }
-      ${statCard("Max drawdown", fmt2(s.max_drawdown_pct ?? 0) + "%", "")}
-    </div>
-    <div class="chart-pair" style="padding:0">
-      <article class="chart-card">
-        <div class="chart-card-head"><div><p class="eyebrow">Growth</p><h3>Equity curve</h3></div></div>
-        <div class="plot" id="strat-equity-${esc(name)}"></div>
-      </article>
-      <article class="chart-card">
-        <div class="chart-card-head"><div><p class="eyebrow">Daily</p><h3>P&amp;L bars</h3></div></div>
-        <div class="plot" id="strat-daily-${esc(name)}"></div>
-      </article>
+  const pills = ["all", ...strats];
+  el.innerHTML = `
+    <div class="strat-filter-inner">
+      <span class="filter-label">Strategy</span>
+      <div class="strat-pills">
+        ${pills.map(s => `
+          <button class="strat-pill ${s === state.activeStrategy ? "active" : ""}"
+                  data-strat="${esc(s)}">
+            ${s === "all" ? "All strategies" : esc(s)}
+          </button>`).join("")}
+      </div>
     </div>`;
 
-  // Equity curve for this strategy
-  let eq = (s.initial_equity ?? state.data.initial_equity ?? 10000);
-  const eqCurve = [{ x: trades[0]?.entry_time, y: eq }];
-  for (const t of trades.sort((a,b) => a.exit_time < b.exit_time ? -1 : 1)) {
-    eq = Math.round((eq + t.pnl_usd) * 100) / 100;
-    eqCurve.push({ x: t.exit_time, y: eq });
-  }
-  const stratColor = cssVar(PALETTE[Object.keys(state.data.stats?.by_strategy ?? {}).sort().indexOf(name) % PALETTE.length]);
-  plot(`strat-equity-${name}`, [{
-    type: "scatter", mode: "lines",
-    x: eqCurve.map(p => p.x), y: eqCurve.map(p => p.y),
-    line: { color: stratColor, width: 2.5 },
-    fill: "tozeroy", fillcolor: stratColor + "18",
-    hovertemplate: "<b>%{x}</b><br>%{y:$,.2f}<extra></extra>",
-  }], { yaxis: { tickprefix: "$" } });
+  el.querySelectorAll(".strat-pill").forEach(btn =>
+    btn.addEventListener("click", () => applyStrategyFilter(btn.dataset.strat)));
+}
 
-  // Daily PnL for this strategy
-  const days = Object.keys(daily).sort();
-  const pnls = days.map(d => daily[d]);
-  plot(`strat-daily-${name}`, [{
-    type: "bar",
-    x: days, y: pnls,
-    marker: { color: pnls.map(v => v >= 0 ? cssVar("--good") : cssVar("--danger")), opacity: 0.85 },
-    hovertemplate: "<b>%{x}</b><br>%{y:+$,.2f}<extra></extra>",
-  }], { yaxis: { tickprefix: "$" }, bargap: 0.3 });
+function applyStrategyFilter(name) {
+  state.activeStrategy = name;
+  // Sync trade-table strategy dropdown
+  const fStrat = document.getElementById("f-strat");
+  if (fStrat) {
+    fStrat.value = name;
+    state.filterStrategy = name;
+    applyFilters();
+  }
+  renderHero();
+  renderStrategyFilter();   // update active pill
+  renderCharts();
+  renderSymbolGrid();
 }
 
 function statCard(label, value, color) {
   return `<div class="stat-card">
     <span class="eyebrow">${esc(label)}</span>
-    <span class="stat-val" style="${color ? "color:"+color : ""}">${esc(String(value))}</span>
+    <span class="stat-val" style="${color ? "color:" + color : ""}">${esc(String(value))}</span>
   </div>`;
+}
+
+// ── Symbol helpers ────────────────────────────────────────────
+function _getBySymbol() {
+  const d = state.data;
+  if (state.activeStrategy === "all") return d.stats?.by_symbol ?? {};
+  // Compute from filtered trades for this strategy
+  const bySym = {};
+  for (const t of (d.trades ?? []).filter(t => t.strategy === state.activeStrategy)) {
+    const sym = t.symbol;
+    if (!bySym[sym]) bySym[sym] = { trades: 0, wins: 0, total_pnl: 0, total_r: 0 };
+    bySym[sym].trades++;
+    if ((t.pnl_usd ?? 0) > 0) bySym[sym].wins++;
+    bySym[sym].total_pnl += t.pnl_usd ?? 0;
+    bySym[sym].total_r   += t.pnl_r   ?? 0;
+  }
+  for (const b of Object.values(bySym)) {
+    b.win_rate  = b.trades > 0 ? Math.round(b.wins  / b.trades * 100) : 0;
+    b.total_pnl = Math.round(b.total_pnl * 100) / 100;
+    b.total_r   = Math.round(b.total_r   * 100) / 100;
+  }
+  return bySym;
 }
 
 // ── Symbol charts & grid ──────────────────────────────────────
 function renderSymbolCharts() {
-  const bySym = state.data.stats?.by_symbol ?? {};
+  const bySym = _getBySymbol();
   const syms  = Object.keys(bySym).filter(s => bySym[s].total_pnl).sort((a,b) => bySym[b].total_pnl - bySym[a].total_pnl);
   if (!syms.length) return;
 
@@ -345,7 +391,7 @@ function renderSymbolCharts() {
 function renderSymbolGrid() {
   const grid   = document.getElementById("sym-grid");
   if (!grid) return;
-  const bySym  = state.data.stats?.by_symbol ?? {};
+  const bySym  = _getBySymbol();
   const syms   = Object.keys(bySym).sort((a, b) => (bySym[b].total_pnl ?? 0) - (bySym[a].total_pnl ?? 0));
 
   grid.innerHTML = syms.map(sym => {
@@ -393,7 +439,23 @@ function renderFilters() {
     </div>
     <span class="filter-count" id="trade-count"></span>`;
 
-  document.getElementById("f-strat").addEventListener("change", e => { state.filterStrategy  = e.target.value; applyFilters(); });
+  // Seed strategy dropdown from the global activeStrategy pill
+  const fStrat = document.getElementById("f-strat");
+  if (fStrat && state.activeStrategy !== "all") {
+    fStrat.value = state.activeStrategy;
+    state.filterStrategy = state.activeStrategy;
+  }
+
+  fStrat.addEventListener("change", e => {
+    state.filterStrategy  = e.target.value;
+    // Keep strategy pill in sync when dropdown changes independently
+    state.activeStrategy  = e.target.value;
+    renderStrategyFilter();
+    renderHero();
+    renderCharts();
+    renderSymbolGrid();
+    applyFilters();
+  });
   document.getElementById("f-sym").addEventListener("change",   e => { state.filterSymbol    = e.target.value; applyFilters(); });
   document.getElementById("f-dir").addEventListener("change",   e => { state.filterDirection = e.target.value; applyFilters(); });
 

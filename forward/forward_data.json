@@ -1,10 +1,11 @@
 {
-  "generated_at": "2026-04-04T07:11:38.908902Z",
-  "mode": "live_mt5",
-  "account": 591502727,
+  "generated_at": "2026-04-04T07:44:22.611441Z",
+  "deployed_at": "2026-04-04T07:44:22.611441Z",
+  "mode": "live",
+  "account": 590990731,
   "initial_equity": 10000.0,
   "period": {
-    "start": "2026-01-04",
+    "start": "2026-04-04",
     "end": "2026-04-04"
   },
   "stats": {
@@ -26,11 +27,12 @@
     "daily_pnl": {},
     "weekly_pnl": {},
     "weekly_r": {},
-    "by_symbol": {}
+    "by_symbol": {},
+    "by_strategy": {}
   },
   "equity_curve": [
     {
-      "time": "2026-01-04T07:11:38",
+      "time": "2026-04-04T07:44:22",
       "equity": 10000.0
     }
   ],
