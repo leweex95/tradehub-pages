@@ -401,7 +401,7 @@ function renderAggCharts(stratGroups) {
         hovertemplate: `<b>${esc(sym)}</b><br>%{x}: %{y:.2f}s<extra></extra>` };
     });
 
-    plot("agg-pnl-chart", pnlTraces, { barmode: "stack", yaxis: { title: "USD" } });
+    plot("agg-pnl-chart", pnlTraces, { barmode: "stack", xaxis: { type: "category" }, yaxis: { title: "USD" } });
     plot("agg-runtime-chart", rtTraces, { yaxis: { title: "Seconds" } });
     document.getElementById("agg-pnl-note").textContent = `Per-symbol net PnL for ${grp.public_name} — one bar per run date.`;
     document.getElementById("agg-runtime-note").textContent = `Per-symbol runtime breakdown for ${grp.public_name}.`;
@@ -438,7 +438,7 @@ function renderAggCharts(stratGroups) {
       marker: { color: colour, opacity: 0.8 },
       hovertemplate: `<b>${esc(grp.public_name)}</b><br>%{x}: %{y:$,.2f}<extra></extra>` };
   });
-  plot("agg-pnl-chart", pnlTraces, { barmode: "group", yaxis: { title: "USD" } });
+  plot("agg-pnl-chart", pnlTraces, { barmode: "group", xaxis: { type: "category" }, yaxis: { title: "USD" } });
   document.getElementById("agg-pnl-note").textContent = "Aggregate net PnL across all monthly benchmarks per strategy per run.";
 }
 
@@ -593,7 +593,7 @@ function renderPaneHistoryCharts(nickname, grp, activeSym) {
         .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0));
     plot(`pane-pnl-${nickname}`, [{ type:"bar", name: activeSym, x: dates, y: pnlYs,
       marker: { color: pnlYs.map(v => v >= 0 ? "rgba(111,217,143,0.85)" : "rgba(255,123,97,0.85)") } }],
-      { yaxis: { title: "USD" }, margin: { t:6, r:8, b:36, l:52 } });
+      { xaxis: { type: "category" }, yaxis: { title: "USD" }, margin: { t:6, r:8, b:36, l:52 } });
     plot(`pane-rt-${nickname}`, [{ type:"scatter", mode:"lines+markers", name: activeSym, x: dates, y: rtYs,
       line: { color: colour, width: 2 }, marker: { size: 5, color: colour } }],
       { yaxis: { title: "Seconds" }, margin: { t:6, r:8, b:36, l:52 } });
@@ -620,7 +620,7 @@ function renderPaneHistoryCharts(nickname, grp, activeSym) {
       return { type:"scatter", mode:"lines+markers", name: sym, x: dates, y: ys,
         line: { color: colour, width: 1.5 }, marker: { size: 4, color: colour } };
     });
-    plot(`pane-pnl-${nickname}`, pnlTraces, { barmode: "stack", yaxis: { title: "USD" }, margin: { t:6, r:8, b:36, l:52 } });
+    plot(`pane-pnl-${nickname}`, pnlTraces, { barmode: "stack", xaxis: { type: "category" }, yaxis: { title: "USD" }, margin: { t:6, r:8, b:36, l:52 } });
     plot(`pane-rt-${nickname}`, rtTraces, { yaxis: { title: "Seconds" }, margin: { t:6, r:8, b:36, l:52 } });
   }
 }

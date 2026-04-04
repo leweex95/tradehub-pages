@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradeHub — Forward Testing</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────── -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <span class="brand-dot"></span>
+        <span class="brand-name">TradeHub
+          <span class="brand-slash">/</span>
+          <span class="brand-muted">forward testing</span>
+        </span>
+      </div>
+      <div class="header-right">
+        <div id="header-status" class="header-status"></div>
+        <a href="../index.html" class="back-link">← Home</a>
+        <button id="theme-toggle" class="theme-btn" aria-label="Toggle theme">
+          <span class="theme-icon theme-icon-dark">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
+          <span class="theme-icon theme-icon-light">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <!-- ── Hero ─────────────────────────────────────────────────── -->
+    <section class="hero panel" id="hero"></section>
+
+    <!-- ── Equity + Daily PnL charts ────────────────────────────── -->
+    <section class="panel">
+      <div class="section-header">
+        <p class="eyebrow">Portfolio performance</p>
+        <h2 class="section-title">Equity curve &amp; daily P&amp;L</h2>
+      </div>
+      <div class="chart-pair">
+        <article class="chart-card">
+          <div class="chart-card-head">
+            <div><p class="eyebrow">Growth</p><h3>Equity curve</h3></div>
+          </div>
+          <div class="plot" id="equity-chart"></div>
+        </article>
+        <article class="chart-card">
+          <div class="chart-card-head">
+            <div><p class="eyebrow">Daily</p><h3>P&amp;L by day</h3></div>
+          </div>
+          <div class="plot" id="daily-chart"></div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ── Per-strategy tabs ─────────────────────────────────────── -->
+    <section class="panel tabs-section">
+      <div class="section-header">
+        <p class="eyebrow">Break down by strategy</p>
+        <h2 class="section-title">Strategy performance</h2>
+      </div>
+      <div class="tabs-bar" id="strat-tabs" role="tablist"></div>
+      <div id="strat-panes"></div>
+    </section>
+
+    <!-- ── Symbol breakdown ──────────────────────────────────────── -->
+    <section class="panel">
+      <div class="section-header">
+        <p class="eyebrow">Instrument analysis</p>
+        <h2 class="section-title">Performance by symbol</h2>
+      </div>
+      <div class="chart-pair" style="padding-top:0">
+        <article class="chart-card">
+          <div class="chart-card-head"><div><h3>PnL per symbol</h3></div></div>
+          <div class="plot" id="sym-pnl-chart"></div>
+        </article>
+        <article class="chart-card">
+          <div class="chart-card-head"><div><h3>Trade count per symbol</h3></div></div>
+          <div class="plot" id="sym-count-chart"></div>
+        </article>
+      </div>
+      <div class="sym-grid" id="sym-grid"></div>
+    </section>
+
+    <!-- ── Trade log ─────────────────────────────────────────────── -->
+    <section class="panel">
+      <div class="section-header">
+        <p class="eyebrow">Full trade log</p>
+        <h2 class="section-title">All trades</h2>
+      </div>
+      <div style="padding: 0 24px 16px">
+        <div class="filters" id="trade-filters"></div>
+      </div>
+      <div class="table-wrap" id="trade-table-wrap"><p class="empty-state">Loading trades…</p></div>
+    </section>
+
+    <!-- ── Footer ────────────────────────────────────────────────── -->
+    <footer class="footer" id="footer"></footer>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
