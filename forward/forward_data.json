@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-04T13:08:23.607817Z",
+  "generated_at": "2026-04-04T14:08:48.884292Z",
   "deployed_at": "2026-04-04T08:13:54.538868Z",
   "mode": "live",
   "account": "591502727",
@@ -13,52 +13,39 @@
     "end": "2026-04-04"
   },
   "stats": {
-    "total_trades": 10,
-    "winning_trades": 6,
-    "losing_trades": 4,
-    "win_rate_pct": 60.0,
-    "total_pnl_usd": -3.0,
+    "total_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "win_rate_pct": 0.0,
+    "total_pnl_usd": 0,
     "total_r": 0.0,
     "r_per_day": 0.0,
-    "avg_win_usd": 1.5,
-    "avg_loss_usd": -3.0,
-    "profit_factor": 0.75,
-    "max_drawdown_pct": 0.06,
+    "avg_win_usd": 0.0,
+    "avg_loss_usd": 0.0,
+    "profit_factor": 999.0,
+    "max_drawdown_pct": 0.0,
     "initial_equity": 10000.0,
-    "final_equity": 9997.0,
-    "return_pct": -0.03,
+    "final_equity": 10000.0,
+    "return_pct": 0.0,
     "avg_duration_bars": 0,
-    "daily_pnl": {
-      "2026-04-04": -3.0
-    },
-    "weekly_pnl": {
-      "2026-W14": -3.0
-    },
-    "weekly_r": {
-      "2026-W14": 0.0
-    },
-    "by_symbol": {
-      "EURUSD": {
-        "trades": 10,
-        "win_rate": 60.0,
-        "total_pnl": -3.0,
-        "total_r": 0.0
-      }
-    },
+    "daily_pnl": {},
+    "weekly_pnl": {},
+    "weekly_r": {},
+    "by_symbol": {},
     "by_strategy": {
-      "tradehub_verification_scalper": {
-        "total_trades": 10,
-        "winning_trades": 6,
-        "losing_trades": 4,
-        "win_rate_pct": 60.0,
-        "total_pnl_usd": -3.0,
-        "total_r": 0.0,
-        "profit_factor": 0.75,
-        "max_drawdown_pct": 0.06,
-        "initial_equity": 10000.0,
-        "return_pct": -0.03
-      },
       "tradehub_macd_stochastic": {
+        "total_trades": 0,
+        "winning_trades": 0,
+        "losing_trades": 0,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 999.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_verification_scalper": {
         "total_trades": 0,
         "winning_trades": 0,
         "losing_trades": 0,
@@ -76,218 +63,7 @@
     {
       "time": "2026-04-04T08:13:54",
       "equity": 10000.0
-    },
-    {
-      "time": "2026-04-04T08:42:00",
-      "equity": 10001.5
-    },
-    {
-      "time": "2026-04-04T09:25:00",
-      "equity": 9998.5
-    },
-    {
-      "time": "2026-04-04T09:42:00",
-      "equity": 10000.0
-    },
-    {
-      "time": "2026-04-04T10:12:00",
-      "equity": 10001.5
-    },
-    {
-      "time": "2026-04-04T10:55:00",
-      "equity": 9998.5
-    },
-    {
-      "time": "2026-04-04T11:12:00",
-      "equity": 10000.0
-    },
-    {
-      "time": "2026-04-04T11:55:00",
-      "equity": 9997.0
-    },
-    {
-      "time": "2026-04-04T12:12:00",
-      "equity": 9998.5
-    },
-    {
-      "time": "2026-04-04T12:55:00",
-      "equity": 9995.5
-    },
-    {
-      "time": "2026-04-04T13:12:00",
-      "equity": 9997.0
     }
   ],
-  "trades": [
-    {
-      "id": "1001",
-      "symbol": "EURUSD",
-      "strategy": "tradehub_verification_scalper",
-      "direction": "buy",
-      "entry_time": "2026-04-04T08:30:00",
-      "exit_time": "2026-04-04T08:42:00",
-      "entry_price": 1.1517,
-      "exit_price": 1.1532,
-      "sl_price": 1.1487,
-      "tp_price": 1.1532,
-      "lots": 0.01,
-      "pnl_usd": 1.5,
-      "pnl_r": 0.05,
-      "exit_reason": "tp",
-      "duration_bars": 12
-    },
-    {
-      "id": "1002",
-      "symbol": "EURUSD",
-      "strategy": "tradehub_verification_scalper",
-      "direction": "sell",
-      "entry_time": "2026-04-04T09:00:00",
-      "exit_time": "2026-04-04T09:25:00",
-      "entry_price": 1.1517,
-      "exit_price": 1.1547,
-      "sl_price": 1.1547,
-      "tp_price": 1.1502,
-      "lots": 0.01,
-      "pnl_usd": -3.0,
-      "pnl_r": -0.1,
-      "exit_reason": "sl",
-      "duration_bars": 25
-    },
-    {
-      "id": "1003",
-      "symbol": "EURUSD",
-      "strategy": "tradehub_verification_scalper",
-      "direction": "buy",
-      "entry_time": "2026-04-04T09:30:00",
-      "exit_time": "2026-04-04T09:42:00",
-      "entry_price": 1.1517,
-      "exit_price": 1.1532,
-      "sl_price": 1.1487,
-      "tp_price": 1.1532,
-      "lots": 0.01,
-      "pnl_usd": 1.5,
-      "pnl_r": 0.05,
-      "exit_reason": "tp",
-      "duration_bars": 12
-    },
-    {
-      "id": "1004",
-      "symbol": "EURUSD",
-      "strategy": "tradehub_verification_scalper",
-      "direction": "sell",
-      "entry_time": "2026-04-04T10:00:00",
-      "exit_time": "2026-04-04T10:12:00",
-      "entry_price": 1.1517,
-      "exit_price": 1.1502,
-      "sl_price": 1.1547,
-      "tp_price": 1.1502,
-      "lots": 0.01,
-      "pnl_usd": 1.5,
-      "pnl_r": 0.05,
-      "exit_reason": "tp",
-      "duration_bars": 12
-    },
-    {
-      "id": "1005",
-      "symbol": "EURUSD",
-      "strategy": "tradehub_verification_scalper",
-      "direction": "buy",
-      "entry_time": "2026-04-04T10:30:00",
-      "exit_time": "2026-04-04T10:55:00",
-      "entry_price": 1.1517,
-      "exit_price": 1.1487,
-      "sl_price": 1.1487,
-      "tp_price": 1.1532,
-      "lots": 0.01,
-      "pnl_usd": -3.0,
-      "pnl_r": -0.1,
-      "exit_reason": "sl",
-      "duration_bars": 25
-    },
-    {
-      "id": "1006",
-      "symbol": "EURUSD",
-      "strategy": "tradehub_verification_scalper",
-      "direction": "sell",
-      "entry_time": "2026-04-04T11:00:00",
-      "exit_time": "2026-04-04T11:12:00",
-      "entry_price": 1.1517,
-      "exit_price": 1.1502,
-      "sl_price": 1.1547,
-      "tp_price": 1.1502,
-      "lots": 0.01,
-      "pnl_usd": 1.5,
-      "pnl_r": 0.05,
-      "exit_reason": "tp",
-      "duration_bars": 12
-    },
-    {
-      "id": "1007",
-      "symbol": "EURUSD",
-      "strategy": "tradehub_verification_scalper",
-      "direction": "buy",
-      "entry_time": "2026-04-04T11:30:00",
-      "exit_time": "2026-04-04T11:55:00",
-      "entry_price": 1.1517,
-      "exit_price": 1.1487,
-      "sl_price": 1.1487,
-      "tp_price": 1.1532,
-      "lots": 0.01,
-      "pnl_usd": -3.0,
-      "pnl_r": -0.1,
-      "exit_reason": "sl",
-      "duration_bars": 25
-    },
-    {
-      "id": "1008",
-      "symbol": "EURUSD",
-      "strategy": "tradehub_verification_scalper",
-      "direction": "sell",
-      "entry_time": "2026-04-04T12:00:00",
-      "exit_time": "2026-04-04T12:12:00",
-      "entry_price": 1.1517,
-      "exit_price": 1.1502,
-      "sl_price": 1.1547,
-      "tp_price": 1.1502,
-      "lots": 0.01,
-      "pnl_usd": 1.5,
-      "pnl_r": 0.05,
-      "exit_reason": "tp",
-      "duration_bars": 12
-    },
-    {
-      "id": "1009",
-      "symbol": "EURUSD",
-      "strategy": "tradehub_verification_scalper",
-      "direction": "buy",
-      "entry_time": "2026-04-04T12:30:00",
-      "exit_time": "2026-04-04T12:55:00",
-      "entry_price": 1.1517,
-      "exit_price": 1.1487,
-      "sl_price": 1.1487,
-      "tp_price": 1.1532,
-      "lots": 0.01,
-      "pnl_usd": -3.0,
-      "pnl_r": -0.1,
-      "exit_reason": "sl",
-      "duration_bars": 25
-    },
-    {
-      "id": "1010",
-      "symbol": "EURUSD",
-      "strategy": "tradehub_verification_scalper",
-      "direction": "sell",
-      "entry_time": "2026-04-04T13:00:00",
-      "exit_time": "2026-04-04T13:12:00",
-      "entry_price": 1.1517,
-      "exit_price": 1.1502,
-      "sl_price": 1.1547,
-      "tp_price": 1.1502,
-      "lots": 0.01,
-      "pnl_usd": 1.5,
-      "pnl_r": 0.05,
-      "exit_reason": "tp",
-      "duration_bars": 12
-    }
-  ]
+  "trades": []
 }
