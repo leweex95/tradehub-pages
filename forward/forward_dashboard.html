@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeHub — Forward Testing Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a14;
+    --bg2: #10101e;
+    --card: #14142a;
+    --border: #1e1e3a;
+    --accent: #00d4ff;
+    --gold: #ffd700;
+    --green: #00e676;
+    --red: #ff5252;
+    --text: #e0e0f0;
+    --muted: #7070a0;
+    --radius: 12px;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font);
+         min-height: 100vh; padding: 0 0 60px; }
+
+  /* ── Header ─────────────────────────────────────── */
+  .header {
+    background: linear-gradient(135deg, #0a0a20 0%, #12124a 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo { font-size: 1.6rem; font-weight: 800; color: var(--accent);
+          letter-spacing: -0.5px; }
+  .logo span { color: var(--gold); }
+  .badge { padding: 4px 12px; border-radius: 20px; font-size: 12px;
+           font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .badge-live { background: #00e67620; color: var(--green); border: 1px solid #00e67650; }
+  .badge-dummy { background: #ffd70020; color: var(--gold); border: 1px solid #ffd70050; }
+  .generated { color: var(--muted); font-size: 13px; }
+  .back-btn {
+    color: var(--muted); text-decoration: none; font-size: 13px;
+    padding: 6px 14px; border: 1px solid var(--border); border-radius: 20px;
+    transition: all .2s;
+  }
+  .back-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── Main layout ────────────────────────────────── */
+  .main { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+
+  /* ── KPI cards ──────────────────────────────────── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px; margin-bottom: 28px;
+  }
+  .kpi-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+    position: relative; overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .kpi-card:hover { transform: translateY(-2px);
+                    box-shadow: 0 8px 24px #0006; }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent-color, var(--accent));
+  }
+  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase;
+               letter-spacing: 1px; margin-bottom: 8px; }
+  .kpi-value { font-size: 1.6rem; font-weight: 700; line-height: 1; }
+  .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .neutral { color: var(--accent); }
+
+  /* ── Section titles ─────────────────────────────── */
+  .section { margin-bottom: 28px; }
+  .section-title {
+    font-size: 1rem; font-weight: 700; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 1px;
+    border-left: 3px solid var(--accent); padding-left: 12px;
+    margin-bottom: 16px;
+  }
+
+  /* ── Chart cards ────────────────────────────────── */
+  .chart-grid { display: grid; gap: 20px; }
+  .chart-grid-2 { grid-template-columns: 1fr; }
+  @media(min-width: 900px) { .chart-grid-2 { grid-template-columns: 2fr 1fr; } }
+  .chart-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .chart-card h3 { font-size: 14px; color: var(--muted); margin-bottom: 14px;
+                   text-transform: uppercase; letter-spacing: 0.8px; }
+  canvas { max-height: 280px; }
+
+  /* ── Filters ────────────────────────────────────── */
+  .filter-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 18px; margin-bottom: 16px;
+  }
+  .filter-bar label { font-size: 12px; color: var(--muted);
+                      text-transform: uppercase; letter-spacing: 1px; }
+  .filter-bar select, .filter-bar input {
+    background: var(--bg2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 10px; font-size: 13px; outline: none;
+    transition: border-color .2s;
+  }
+  .filter-bar select:focus, .filter-bar input:focus {
+    border-color: var(--accent);
+  }
+
+  /* ── Trade table ────────────────────────────────── */
+  .table-wrap { overflow-x: auto; border-radius: var(--radius);
+                border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: var(--bg2); }
+  thead th {
+    padding: 10px 14px; text-align: left; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+    white-space: nowrap; cursor: pointer; user-select: none;
+    transition: color .2s;
+  }
+  thead th:hover { color: var(--accent); }
+  tbody tr { border-bottom: 1px solid var(--border);
+             transition: background .15s; }
+  tbody tr:hover { background: #ffffff08; }
+  tbody td { padding: 8px 14px; white-space: nowrap; }
+  .dir-buy { color: var(--green); font-weight: 600; }
+  .dir-sell { color: var(--red); font-weight: 600; }
+  .reason { display: inline-block; padding: 2px 8px; border-radius: 4px;
+            font-size: 11px; font-weight: 600; }
+  .reason-tp { background: #00e67615; color: var(--green); }
+  .reason-sl { background: #ff525215; color: var(--red); }
+  .reason-trailing { background: #ffd70015; color: var(--gold); }
+  .reason-manual { background: #ffffff10; color: var(--muted); }
+  .pagination { display: flex; gap: 8px; align-items: center;
+                justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+  .page-btn {
+    background: var(--card); border: 1px solid var(--border);
+    color: var(--text); padding: 6px 12px; border-radius: 6px;
+    font-size: 13px; cursor: pointer; transition: all .2s;
+  }
+  .page-btn:hover, .page-btn.active { background: var(--accent);
+    color: #000; border-color: var(--accent); }
+
+  /* ── Symbol breakdown ───────────────────────────── */
+  .sym-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .sym-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 16px; cursor: pointer;
+    transition: all .2s;
+  }
+  .sym-card:hover, .sym-card.active { border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent); }
+  .sym-name { font-size: 14px; font-weight: 700; color: var(--accent); }
+  .sym-stats { display: flex; gap: 14px; margin-top: 8px; flex-wrap: wrap; }
+  .sym-stat { font-size: 12px; }
+  .sym-stat span { color: var(--muted); }
+
+  /* ── Weekly table ───────────────────────────────── */
+  .weekly-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .week-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px;
+  }
+  .week-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .week-pnl { font-size: 1.1rem; font-weight: 700; }
+  .week-r { font-size: 12px; color: var(--muted); }
+
+  .footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 40px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo">Trade<span>Hub</span></div>
+    <span class="badge" id="modeBadge">FORWARD TESTING</span>
+  </div>
+  <span class="generated" id="generatedAt"></span>
+  <a href="../index.html" class="back-btn">← Back to Dashboard</a>
+</header>
+
+<div class="main">
+
+  <!-- KPI Strip -->
+  <section class="section">
+    <div class="section-title">Key Metrics</div>
+    <div class="kpi-grid" id="kpiGrid"></div>
+  </section>
+
+  <!-- Equity Curve + Symbol Distribution -->
+  <section class="section">
+    <div class="section-title">Equity & Performance</div>
+    <div class="chart-grid chart-grid-2">
+      <div class="chart-card">
+        <h3>Equity Curve ($10,000 start)</h3>
+        <canvas id="equityChart"></canvas>
+      </div>
+      <div class="chart-card">
+        <h3>Symbol Distribution</h3>
+        <canvas id="symbolPieChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- Weekly / Daily PnL -->
+  <section class="section">
+    <div class="section-title">Weekly P&amp;L</div>
+    <div class="chart-card">
+      <canvas id="weeklyBarChart"></canvas>
+    </div>
+  </section>
+
+  <!-- Symbol Breakdown -->
+  <section class="section">
+    <div class="section-title">Symbol Breakdown
+      <small style="font-size:11px;font-weight:400;color:var(--muted);margin-left:8px">
+        (click to filter trades)
+      </small>
+    </div>
+    <div class="sym-grid" id="symbolGrid"></div>
+  </section>
+
+  <!-- Trade List -->
+  <section class="section">
+    <div class="section-title">Trade Log</div>
+    <div class="filter-bar">
+      <label>Symbol</label>
+      <select id="filterSymbol">
+        <option value="">All Symbols</option>
+      </select>
+      <label>Direction</label>
+      <select id="filterDir">
+        <option value="">All</option>
+        <option value="buy">Buy</option>
+        <option value="sell">Sell</option>
+      </select>
+      <label>Exit</label>
+      <select id="filterExit">
+        <option value="">All</option>
+        <option value="tp">TP Hit</option>
+        <option value="sl">SL Hit</option>
+        <option value="trailing">Trailing</option>
+      </select>
+      <label>Strategy</label>
+      <select id="filterStrategy">
+        <option value="">All</option>
+      </select>
+      <label style="margin-left:auto">Search</label>
+      <input type="text" id="searchInput" placeholder="symbol / date…" style="width:140px">
+    </div>
+    <div class="table-wrap">
+      <table id="tradeTable">
+        <thead>
+          <tr>
+            <th data-col="id">#</th>
+            <th data-col="entry_time">Entry Time</th>
+            <th data-col="symbol">Symbol</th>
+            <th data-col="direction">Dir</th>
+            <th data-col="entry_price">Entry</th>
+            <th data-col="exit_price">Exit</th>
+            <th data-col="lots">Lots</th>
+            <th data-col="pnl_usd">P&amp;L $</th>
+            <th data-col="pnl_r">P&amp;L R</th>
+            <th data-col="exit_reason">Exit</th>
+            <th data-col="duration_bars">Bars</th>
+          </tr>
+        </thead>
+        <tbody id="tradeBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </section>
+
+  <!-- Weekly cards -->
+  <section class="section">
+    <div class="section-title">Week-by-Week Summary</div>
+    <div class="weekly-grid" id="weeklyGrid"></div>
+  </section>
+
+</div>
+
+<footer class="footer" id="footer"></footer>
+
+<script>
+// ──────────────────────────────────────────────────────────────────────────────
+// Data injected by the generator
+// ──────────────────────────────────────────────────────────────────────────────
+const DATA = {"generated_at": "2026-04-04T08:14:01.822468Z", "mode": "dummy", "initial_equity": 10000.0, "period": {"start": "2025-11-01", "end": "2026-03-28"}, "stats": {"total_trades": 120, "winning_trades": 55, "losing_trades": 65, "win_rate_pct": 45.8, "total_pnl_usd": 5467.48, "total_r": 54.675, "r_per_day": 0.71, "avg_win_usd": 199.7, "avg_loss_usd": -84.87, "profit_factor": 1.991, "max_drawdown_pct": 5.1, "initial_equity": 10000.0, "final_equity": 15467.48, "return_pct": 54.67, "avg_duration_bars": 312.0, "daily_pnl": {"2025-11-02": 113.23, "2025-11-03": 179.01, "2025-11-05": 167.55, "2025-11-04": -107.87, "2025-11-06": -115.37, "2025-11-10": 438.7, "2025-11-15": 293.62, "2025-11-17": -140.88, "2025-11-18": -55.25, "2025-11-19": -103.33, "2025-11-20": -73.79, "2025-11-22": 328.02, "2025-11-26": 178.88, "2025-11-27": -67.05000000000001, "2025-11-30": 142.46, "2025-12-03": 333.93, "2025-12-06": -69.05, "2025-12-08": -59.46, "2025-12-09": 136.18, "2025-12-12": 238.25, "2025-12-15": 78.69000000000001, "2025-12-14": -91.14, "2025-12-16": -140.99, "2025-12-19": 196.2, "2025-12-20": 237.98999999999998, "2025-12-22": -104.16, "2025-12-23": 19.28, "2025-12-25": 161.05, "2025-12-26": 200.02999999999997, "2025-12-27": 117.19, "2025-12-28": 166.69, "2025-12-30": 277.32, "2026-01-03": 237.37, "2026-01-05": -58.6, "2026-01-07": 238.7, "2026-01-08": -165.12, "2026-01-10": -19.389999999999986, "2026-01-11": 232.35, "2026-01-15": 107.47, "2026-01-16": -56.51, "2026-01-17": 296.51, "2026-01-19": -78.83, "2026-01-18": 142.22, "2026-01-21": -76.55, "2026-01-22": -190.22, "2026-01-24": -105.65, "2026-01-27": 217.29000000000002, "2026-01-26": 146.81, "2026-01-28": 164.32000000000002, "2026-01-29": -78.63, "2026-02-01": 167.79, "2026-02-02": 231.93, "2026-02-03": -105.67, "2026-02-05": -187.03, "2026-02-06": -136.92000000000002, "2026-02-09": -296.03, "2026-02-10": 399.49, "2026-02-14": -117.65, "2026-02-15": 199.76, "2026-02-18": 286.61, "2026-02-21": 273.61, "2026-02-20": -105.83, "2026-02-22": -55.62, "2026-02-24": -52.3, "2026-02-26": -195.14999999999998, "2026-02-28": -113.64, "2026-03-02": 121.87, "2026-03-03": 155.57, "2026-03-05": -125.76, "2026-03-04": 209.64, "2026-03-06": 106.35, "2026-03-08": 585.04, "2026-03-09": 371.23, "2026-03-10": -91.21, "2026-03-12": 70.85999999999999, "2026-03-13": -203.9, "2026-03-15": 244.97}, "weekly_pnl": {"2025-W44": 113.23, "2025-W45": 123.32, "2025-W46": 732.32, "2025-W47": -45.23, "2025-W48": 254.29, "2025-W49": 264.88, "2025-W50": 223.83, "2025-W51": 371.89, "2025-W52": 560.08, "2025-W01": 277.32, "2026-W01": 237.37, "2026-W02": 227.94, "2026-W03": 489.69, "2026-W04": -451.25, "2026-W05": 617.58, "2026-W06": -197.69, "2026-W07": 185.57, "2026-W08": 398.77, "2026-W09": -361.09, "2026-W10": 1052.71, "2026-W11": 391.95}, "weekly_r": {"2025-W44": 1.132, "2025-W45": 1.232, "2025-W46": 7.323, "2025-W47": -0.452, "2025-W48": 2.543, "2025-W49": 2.649, "2025-W50": 2.238, "2025-W51": 3.719, "2025-W52": 5.599, "2025-W01": 2.773, "2026-W01": 2.374, "2026-W02": 2.279, "2026-W03": 4.897, "2026-W04": -4.512, "2026-W05": 6.177, "2026-W06": -1.977, "2026-W07": 1.856, "2026-W08": 3.988, "2026-W09": -3.61, "2026-W10": 10.527, "2026-W11": 3.92}, "by_symbol": {"EURUSD": {"trades": 15, "win_rate": 40.0, "total_pnl": 914.93, "total_r": 9.152}, "GBPUSD": {"trades": 10, "win_rate": 30.0, "total_pnl": 11.61, "total_r": 0.116}, "USDJPY": {"trades": 11, "win_rate": 27.3, "total_pnl": -160.46, "total_r": -1.604}, "AUDUSD": {"trades": 9, "win_rate": 55.6, "total_pnl": 460.4, "total_r": 4.606}, "USDCAD": {"trades": 12, "win_rate": 66.7, "total_pnl": 1297.67, "total_r": 12.976}, "USDCHF": {"trades": 14, "win_rate": 35.7, "total_pnl": 189.29, "total_r": 1.894}, "EURGBP": {"trades": 10, "win_rate": 80.0, "total_pnl": 1434.07, "total_r": 14.34}, "EURJPY": {"trades": 11, "win_rate": 45.5, "total_pnl": 358.33, "total_r": 3.583}, "GBPJPY": {"trades": 14, "win_rate": 50.0, "total_pnl": 676.34, "total_r": 6.761}, "XAUUSD": {"trades": 14, "win_rate": 35.7, "total_pnl": 285.3, "total_r": 2.851}}}, "equity_curve": [{"time": "2025-11-01T01:46:04", "equity": 10000.0}, {"time": "2025-11-02T19:47:09", "equity": 10113.23}, {"time": "2025-11-03T10:15:18", "equity": 10292.24}, {"time": "2025-11-05T06:26:01", "equity": 10459.79}, {"time": "2025-11-04T18:35:53", "equity": 10351.92}, {"time": "2025-11-06T15:34:44", "equity": 10236.55}, {"time": "2025-11-10T04:28:08", "equity": 10403.87}, {"time": "2025-11-10T09:16:22", "equity": 10675.25}, {"time": "2025-11-15T02:45:44", "equity": 10965.1}, {"time": "2025-11-15T06:00:43", "equity": 10856.07}, {"time": "2025-11-15T11:58:58", "equity": 11033.35}, {"time": "2025-11-15T06:10:44", "equity": 10968.87}, {"time": "2025-11-17T06:34:27", "equity": 10891.59}, {"time": "2025-11-17T06:13:18", "equity": 10827.99}, {"time": "2025-11-18T11:59:01", "equity": 10772.74}, {"time": "2025-11-19T13:31:42", "equity": 10669.41}, {"time": "2025-11-20T17:56:36", "equity": 10595.62}, {"time": "2025-11-22T17:13:03", "equity": 10706.51}, {"time": "2025-11-22T17:05:47", "equity": 10923.64}, {"time": "2025-11-26T13:37:47", "equity": 11193.03}, {"time": "2025-11-26T22:24:42", "equity": 11102.52}, {"time": "2025-11-27T15:12:16", "equity": 10986.84}, {"time": "2025-11-27T15:36:20", "equity": 11135.75}, {"time": "2025-11-27T09:54:39", "equity": 11035.47}, {"time": "2025-11-30T02:12:41", "equity": 11177.93}, {"time": "2025-12-03T03:20:52", "equity": 11340.75}, {"time": "2025-12-03T08:50:42", "equity": 11511.86}, {"time": "2025-12-06T13:54:09", "equity": 11442.81}, {"time": "2025-12-08T13:05:26", "equity": 11383.35}, {"time": "2025-12-09T21:05:04", "equity": 11519.53}, {"time": "2025-12-12T07:08:04", "equity": 11766.64}, {"time": "2025-12-12T14:14:44", "equity": 11947.26}, {"time": "2025-12-12T11:38:58", "equity": 11863.47}, {"time": "2025-12-12T20:20:06", "equity": 11757.78}, {"time": "2025-12-15T16:33:05", "equity": 11953.11}, {"time": "2025-12-14T08:44:57", "equity": 11861.97}, {"time": "2025-12-15T12:05:31", "equity": 11745.33}, {"time": "2025-12-16T01:48:13", "equity": 11656.99}, {"time": "2025-12-16T02:13:02", "equity": 11604.34}, {"time": "2025-12-19T09:23:17", "equity": 11800.54}, {"time": "2025-12-20T00:22:42", "equity": 11746.26}, {"time": "2025-12-20T22:21:59", "equity": 12038.53}, {"time": "2025-12-22T18:24:12", "equity": 11934.37}, {"time": "2025-12-23T12:09:09", "equity": 12050.81}, {"time": "2025-12-23T02:38:26", "equity": 11953.65}, {"time": "2025-12-25T06:57:15", "equity": 12114.7}, {"time": "2025-12-26T10:03:09", "equity": 12044.53}, {"time": "2025-12-26T05:31:40", "equity": 12314.73}, {"time": "2025-12-27T16:26:22", "equity": 12491.38}, {"time": "2025-12-27T20:55:14", "equity": 12431.92}, {"time": "2025-12-28T06:13:13", "equity": 12598.61}, {"time": "2025-12-30T04:47:06", "equity": 12875.93}, {"time": "2026-01-03T16:15:01", "equity": 13113.3}, {"time": "2026-01-05T20:54:05", "equity": 13054.7}, {"time": "2026-01-07T02:49:35", "equity": 13293.4}, {"time": "2026-01-08T15:05:55", "equity": 13229.22}, {"time": "2026-01-08T01:46:18", "equity": 13407.88}, {"time": "2026-01-08T02:30:40", "equity": 13325.6}, {"time": "2026-01-08T21:41:22", "equity": 13234.67}, {"time": "2026-01-08T12:14:25", "equity": 13128.28}, {"time": "2026-01-10T18:28:52", "equity": 13320.52}, {"time": "2026-01-10T14:32:02", "equity": 13227.2}, {"time": "2026-01-10T01:56:07", "equity": 13108.89}, {"time": "2026-01-11T18:18:29", "equity": 13341.24}, {"time": "2026-01-15T01:13:27", "equity": 13448.71}, {"time": "2026-01-16T19:52:14", "equity": 13392.2}, {"time": "2026-01-17T06:08:14", "equity": 13688.71}, {"time": "2026-01-19T09:11:08", "equity": 13609.88}, {"time": "2026-01-18T16:32:42", "equity": 13752.1}, {"time": "2026-01-21T15:05:53", "equity": 13675.55}, {"time": "2026-01-22T18:10:22", "equity": 13595.8}, {"time": "2026-01-22T20:52:53", "equity": 13542.74}, {"time": "2026-01-22T11:55:09", "equity": 13485.33}, {"time": "2026-01-24T23:26:14", "equity": 13379.68}, {"time": "2026-01-27T02:44:40", "equity": 13656.53}, {"time": "2026-01-26T13:09:44", "equity": 13803.34}, {"time": "2026-01-27T08:27:53", "equity": 13743.78}, {"time": "2026-01-28T17:06:55", "equity": 14002.25}, {"time": "2026-01-28T23:26:00", "equity": 13908.1}, {"time": "2026-01-29T14:45:54", "equity": 13829.47}, {"time": "2026-02-01T18:30:36", "equity": 13997.26}, {"time": "2026-02-02T19:22:22", "equity": 14229.19}, {"time": "2026-02-03T09:28:24", "equity": 14123.52}, {"time": "2026-02-05T16:02:13", "equity": 14018.92}, {"time": "2026-02-05T23:13:12", "equity": 13936.49}, {"time": "2026-02-06T18:32:58", "equity": 13882.66}, {"time": "2026-02-06T18:49:52", "equity": 13799.57}, {"time": "2026-02-09T00:00:20", "equity": 13685.22}, {"time": "2026-02-09T08:03:14", "equity": 13575.23}, {"time": "2026-02-09T05:17:23", "equity": 13503.54}, {"time": "2026-02-10T02:59:25", "equity": 13681.12}, {"time": "2026-02-10T04:13:07", "equity": 13625.09}, {"time": "2026-02-10T06:21:19", "equity": 13903.03}, {"time": "2026-02-14T04:10:49", "equity": 13785.38}, {"time": "2026-02-15T03:37:39", "equity": 13985.14}, {"time": "2026-02-18T20:43:35", "equity": 14271.75}, {"time": "2026-02-21T00:19:33", "equity": 14545.36}, {"time": "2026-02-20T13:10:04", "equity": 14439.53}, {"time": "2026-02-22T23:14:22", "equity": 14383.91}, {"time": "2026-02-24T14:26:53", "equity": 14331.61}, {"time": "2026-02-26T08:10:01", "equity": 14230.9}, {"time": "2026-02-26T19:43:47", "equity": 14136.46}, {"time": "2026-02-28T00:04:10", "equity": 14022.82}, {"time": "2026-03-02T18:07:31", "equity": 14144.69}, {"time": "2026-03-03T17:31:17", "equity": 14300.26}, {"time": "2026-03-05T10:34:09", "equity": 14248.7}, {"time": "2026-03-04T14:08:09", "equity": 14458.34}, {"time": "2026-03-06T06:07:00", "equity": 14564.69}, {"time": "2026-03-05T19:44:31", "equity": 14490.49}, {"time": "2026-03-08T15:43:26", "equity": 14776.86}, {"time": "2026-03-08T07:48:35", "equity": 15075.53}, {"time": "2026-03-09T02:35:27", "equity": 15208.48}, {"time": "2026-03-09T09:26:50", "equity": 15366.28}, {"time": "2026-03-09T06:49:54", "equity": 15566.67}, {"time": "2026-03-09T16:35:25", "equity": 15446.76}, {"time": "2026-03-10T07:51:25", "equity": 15355.55}, {"time": "2026-03-12T02:49:59", "equity": 15497.47}, {"time": "2026-03-12T06:15:48", "equity": 15426.41}, {"time": "2026-03-13T07:09:08", "equity": 15315.26}, {"time": "2026-03-13T20:01:00", "equity": 15222.51}, {"time": "2026-03-15T02:38:51", "equity": 15467.48}], "trades": [{"id": 51, "symbol": "USDCAD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2025-11-01T01:46:04", "exit_time": "2025-11-02T19:47:09", "entry_price": 1.36069, "exit_price": 1.36615, "sl_price": 1.35711, "tp_price": 1.36615, "lots": 0.28, "pnl_usd": 113.23, "pnl_r": 1.132, "exit_reason": "tp", "duration_bars": 504}, {"id": 60, "symbol": "USDCAD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2025-11-02T16:05:54", "exit_time": "2025-11-03T10:15:18", "entry_price": 1.36013, "exit_price": 1.36904, "sl_price": 1.35726, "tp_price": 1.36904, "lots": 0.35, "pnl_usd": 179.01, "pnl_r": 1.79, "exit_reason": "tp", "duration_bars": 217}, {"id": 24, "symbol": "GBPJPY", "strategy": "komjathy", "direction": "buy", "entry_time": "2025-11-03T21:06:57", "exit_time": "2025-11-05T06:26:01", "entry_price": 188.62046, "exit_price": 189.20635, "sl_price": 188.41436, "tp_price": 189.20635, "lots": 0.54, "pnl_usd": 167.55, "pnl_r": 1.675, "exit_reason": "tp", "duration_bars": 399}, {"id": 41, "symbol": "XAUUSD", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2025-11-04T04:57:40", "exit_time": "2025-11-04T18:35:53", "entry_price": 2312.74297, "exit_price": 2327.87781, "sl_price": 2329.73859, "tp_price": 2272.94562, "lots": 0.59, "pnl_usd": -107.87, "pnl_r": -1.079, "exit_reason": "sl", "duration_bars": 163}, {"id": 97, "symbol": "AUDUSD", "strategy": "komjathy", "direction": "buy", "entry_time": "2025-11-05T07:54:24", "exit_time": "2025-11-06T15:34:44", "entry_price": 0.64571, "exit_price": 0.64272, "sl_price": 0.64261, "tp_price": 0.65136, "lots": 0.32, "pnl_usd": -115.37, "pnl_r": -1.154, "exit_reason": "trailing", "duration_bars": 380}, {"id": 5, "symbol": "USDJPY", "strategy": "komjathy", "direction": "sell", "entry_time": "2025-11-09T01:26:40", "exit_time": "2025-11-10T04:28:08", "entry_price": 148.41643, "exit_price": 147.49145, "sl_price": 148.7723, "tp_price": 147.49145, "lots": 0.31, "pnl_usd": 167.32, "pnl_r": 1.673, "exit_reason": "tp", "duration_bars": 324}, {"id": 50, "symbol": "USDCHF", "strategy": "komjathy", "direction": "buy", "entry_time": "2025-11-09T15:42:18", "exit_time": "2025-11-10T09:16:22", "entry_price": 0.9055, "exit_price": 0.91058, "sl_price": 0.90386, "tp_price": 0.91058, "lots": 0.61, "pnl_usd": 271.38, "pnl_r": 2.714, "exit_reason": "tp", "duration_bars": 210}, {"id": 118, "symbol": "EURUSD", "strategy": "macd_stochastic", "direction": "sell", "entry_time": "2025-11-13T04:39:02", "exit_time": "2025-11-15T02:45:44", "entry_price": 1.08462, "exit_price": 1.07889, "sl_price": 1.08657, "tp_price": 1.07889, "lots": 0.51, "pnl_usd": 289.85, "pnl_r": 2.898, "exit_reason": "tp", "duration_bars": 553}, {"id": 111, "symbol": "EURUSD", "strategy": "macd_stochastic", "direction": "sell", "entry_time": "2025-11-13T15:00:44", "exit_time": "2025-11-15T06:00:43", "entry_price": 1.08544, "exit_price": 1.08942, "sl_price": 1.08925, "tp_price": 1.07555, "lots": 0.26, "pnl_usd": -109.03, "pnl_r": -1.09, "exit_reason": "trailing", "duration_bars": 467}, {"id": 98, "symbol": "USDCAD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2025-11-15T02:03:19", "exit_time": "2025-11-15T11:58:58", "entry_price": 1.35933, "exit_price": 1.3678, "sl_price": 1.35594, "tp_price": 1.3678, "lots": 0.29, "pnl_usd": 177.28, "pnl_r": 1.773, "exit_reason": "tp", "duration_bars": 119}, {"id": 78, "symbol": "XAUUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2025-11-15T02:27:25", "exit_time": "2025-11-15T06:10:44", "entry_price": 2315.24951, "exit_price": 2294.18377, "sl_price": 2293.01675, "tp_price": 2350.46499, "lots": 0.45, "pnl_usd": -64.48, "pnl_r": -0.645, "exit_reason": "trailing", "duration_bars": 44}, {"id": 48, "symbol": "EURGBP", "strategy": "komjathy", "direction": "buy", "entry_time": "2025-11-15T16:51:14", "exit_time": "2025-11-17T06:34:27", "entry_price": 0.85495, "exit_price": 0.85098, "sl_price": 0.85108, "tp_price": 0.86365, "lots": 0.26, "pnl_usd": -77.28, "pnl_r": -0.773, "exit_reason": "trailing", "duration_bars": 452}, {"id": 69, "symbol": "EURUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2025-11-16T01:22:24", "exit_time": "2025-11-17T06:13:18", "entry_price": 1.08481, "exit_price": 1.08226, "sl_price": 1.08221, "tp_price": 1.09499, "lots": 0.38, "pnl_usd": -63.6, "pnl_r": -0.636, "exit_reason": "sl", "duration_bars": 346}, {"id": 28, "symbol": "GBPUSD", "strategy": "macd_stochastic", "direction": "sell", "entry_time": "2025-11-17T15:08:22", "exit_time": "2025-11-18T11:59:01", "entry_price": 1.26566, "exit_price": 1.2683, "sl_price": 1.26842, "tp_price": 1.25624, "lots": 0.36, "pnl_usd": -55.25, "pnl_r": -0.552, "exit_reason": "sl", "duration_bars": 250}, {"id": 115, "symbol": "USDCHF", "strategy": "komjathy", "direction": "buy", "entry_time": "2025-11-19T08:37:01", "exit_time": "2025-11-19T13:31:42", "entry_price": 0.90434, "exit_price": 0.90146, "sl_price": 0.90141, "tp_price": 0.9111, "lots": 0.34, "pnl_usd": -103.33, "pnl_r": -1.033, "exit_reason": "trailing", "duration_bars": 58}, {"id": 73, "symbol": "USDJPY", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2025-11-20T02:16:15", "exit_time": "2025-11-20T17:56:36", "entry_price": 148.49339, "exit_price": 148.22563, "sl_price": 148.22199, "tp_price": 149.33427, "lots": 0.41, "pnl_usd": -73.79, "pnl_r": -0.738, "exit_reason": "trailing", "duration_bars": 188}, {"id": 71, "symbol": "EURGBP", "strategy": "komjathy", "direction": "sell", "entry_time": "2025-11-21T04:18:54", "exit_time": "2025-11-22T17:13:03", "entry_price": 0.85503, "exit_price": 0.85195, "sl_price": 0.85687, "tp_price": 0.85195, "lots": 0.54, "pnl_usd": 110.89, "pnl_r": 1.109, "exit_reason": "tp", "duration_bars": 442}, {"id": 36, "symbol": "EURGBP", "strategy": "komjathy", "direction": "buy", "entry_time": "2025-11-21T07:16:18", "exit_time": "2025-11-22T17:05:47", "entry_price": 0.85538, "exit_price": 0.86107, "sl_price": 0.85229, "tp_price": 0.86107, "lots": 0.32, "pnl_usd": 217.13, "pnl_r": 2.171, "exit_reason": "tp", "duration_bars": 405}, {"id": 30, "symbol": "XAUUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2025-11-25T05:36:21", "exit_time": "2025-11-26T13:37:47", "entry_price": 2327.64308, "exit_price": 2427.05541, "sl_price": 2298.8369, "tp_price": 2427.05541, "lots": 0.35, "pnl_usd": 269.39, "pnl_r": 2.694, "exit_reason": "tp", "duration_bars": 384}, {"id": 106, "symbol": "USDCHF", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2025-11-25T20:31:01", "exit_time": "2025-11-26T22:24:42", "entry_price": 0.90561, "exit_price": 0.9031, "sl_price": 0.90316, "tp_price": 0.90987, "lots": 0.41, "pnl_usd": -90.51, "pnl_r": -0.905, "exit_reason": "sl", "duration_bars": 310}, {"id": 58, "symbol": "EURUSD", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2025-11-26T00:34:16", "exit_time": "2025-11-27T15:12:16", "entry_price": 1.08581, "exit_price": 1.08896, "sl_price": 1.08889, "tp_price": 1.0745, "lots": 0.33, "pnl_usd": -115.68, "pnl_r": -1.157, "exit_reason": "trailing", "duration_bars": 463}, {"id": 96, "symbol": "GBPJPY", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2025-11-26T10:06:19", "exit_time": "2025-11-27T15:36:20", "entry_price": 188.65204, "exit_price": 187.65115, "sl_price": 188.99323, "tp_price": 187.65115, "lots": 0.33, "pnl_usd": 148.91, "pnl_r": 1.489, "exit_reason": "tp", "duration_bars": 354}, {"id": 14, "symbol": "EURJPY", "strategy": "komjathy", "direction": "sell", "entry_time": "2025-11-27T02:54:32", "exit_time": "2025-11-27T09:54:39", "entry_price": 161.19527, "exit_price": 161.35093, "sl_price": 161.34908, "tp_price": 160.62022, "lots": 0.72, "pnl_usd": -100.28, "pnl_r": -1.003, "exit_reason": "sl", "duration_bars": 84}, {"id": 32, "symbol": "AUDUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2025-11-29T14:18:35", "exit_time": "2025-11-30T02:12:41", "entry_price": 0.64493, "exit_price": 0.65493, "sl_price": 0.64163, "tp_price": 0.65493, "lots": 0.3, "pnl_usd": 142.46, "pnl_r": 1.425, "exit_reason": "tp", "duration_bars": 142}, {"id": 112, "symbol": "EURJPY", "strategy": "komjathy", "direction": "sell", "entry_time": "2025-12-01T18:26:19", "exit_time": "2025-12-03T03:20:52", "entry_price": 161.16187, "exit_price": 160.48266, "sl_price": 161.41174, "tp_price": 160.48266, "lots": 0.44, "pnl_usd": 162.82, "pnl_r": 1.628, "exit_reason": "tp", "duration_bars": 394}, {"id": 90, "symbol": "USDCHF", "strategy": "komjathy", "direction": "buy", "entry_time": "2025-12-02T21:46:37", "exit_time": "2025-12-03T08:50:42", "entry_price": 0.90477, "exit_price": 0.91144, "sl_price": 0.90301, "tp_price": 0.91144, "lots": 0.57, "pnl_usd": 171.11, "pnl_r": 1.711, "exit_reason": "tp", "duration_bars": 132}, {"id": 53, "symbol": "USDJPY", "strategy": "macd_stochastic", "direction": "sell", "entry_time": "2025-12-05T14:32:22", "exit_time": "2025-12-06T13:54:09", "entry_price": 148.55409, "exit_price": 148.86578, "sl_price": 148.88394, "tp_price": 147.43648, "lots": 0.34, "pnl_usd": -69.05, "pnl_r": -0.69, "exit_reason": "sl", "duration_bars": 280}, {"id": 1, "symbol": "USDCHF", "strategy": "komjathy", "direction": "sell", "entry_time": "2025-12-06T17:57:56", "exit_time": "2025-12-08T13:05:26", "entry_price": 0.90571, "exit_price": 0.90805, "sl_price": 0.90794, "tp_price": 0.89997, "lots": 0.45, "pnl_usd": -59.46, "pnl_r": -0.595, "exit_reason": "sl", "duration_bars": 517}, {"id": 19, "symbol": "EURJPY", "strategy": "macd_stochastic", "direction": "sell", "entry_time": "2025-12-07T22:31:05", "exit_time": "2025-12-09T21:05:04", "entry_price": 161.16022, "exit_price": 160.65019, "sl_price": 161.39981, "tp_price": 160.65019, "lots": 0.46, "pnl_usd": 136.18, "pnl_r": 1.362, "exit_reason": "tp", "duration_bars": 558}, {"id": 74, "symbol": "GBPJPY", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2025-12-11T03:21:29", "exit_time": "2025-12-12T07:08:04", "entry_price": 188.63211, "exit_price": 189.70278, "sl_price": 188.34684, "tp_price": 189.70278, "lots": 0.39, "pnl_usd": 247.11, "pnl_r": 2.471, "exit_reason": "tp", "duration_bars": 333}, {"id": 31, "symbol": "AUDUSD", "strategy": "komjathy", "direction": "buy", "entry_time": "2025-12-11T05:51:15", "exit_time": "2025-12-12T14:14:44", "entry_price": 0.6453, "exit_price": 0.65559, "sl_price": 0.64256, "tp_price": 0.65559, "lots": 0.37, "pnl_usd": 180.62, "pnl_r": 1.806, "exit_reason": "tp", "duration_bars": 388}, {"id": 49, "symbol": "USDCAD", "strategy": "komjathy", "direction": "sell", "entry_time": "2025-12-12T02:00:47", "exit_time": "2025-12-12T11:38:58", "entry_price": 1.3591, "exit_price": 1.36064, "sl_price": 1.36066, "tp_price": 1.35643, "lots": 0.64, "pnl_usd": -83.79, "pnl_r": -0.838, "exit_reason": "sl", "duration_bars": 115}, {"id": 59, "symbol": "GBPJPY", "strategy": "komjathy", "direction": "sell", "entry_time": "2025-12-12T10:08:15", "exit_time": "2025-12-12T20:20:06", "entry_price": 188.74899, "exit_price": 188.93593, "sl_price": 188.95224, "tp_price": 188.21261, "lots": 0.55, "pnl_usd": -105.69, "pnl_r": -1.057, "exit_reason": "sl", "duration_bars": 122}, {"id": 44, "symbol": "GBPJPY", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2025-12-13T21:28:41", "exit_time": "2025-12-15T16:33:05", "entry_price": 188.7849, "exit_price": 189.41582, "sl_price": 188.62049, "tp_price": 189.41582, "lots": 0.68, "pnl_usd": 195.33, "pnl_r": 1.953, "exit_reason": "tp", "duration_bars": 516}, {"id": 9, "symbol": "EURUSD", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2025-12-13T23:19:34", "exit_time": "2025-12-14T08:44:57", "entry_price": 1.0855, "exit_price": 1.08759, "sl_price": 1.08776, "tp_price": 1.07777, "lots": 0.44, "pnl_usd": -91.14, "pnl_r": -0.911, "exit_reason": "sl", "duration_bars": 113}, {"id": 2, "symbol": "GBPJPY", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2025-12-14T11:15:19", "exit_time": "2025-12-15T12:05:31", "entry_price": 188.69143, "exit_price": 188.88837, "sl_price": 188.87969, "tp_price": 187.96035, "lots": 0.59, "pnl_usd": -116.64, "pnl_r": -1.166, "exit_reason": "sl", "duration_bars": 298}, {"id": 92, "symbol": "EURUSD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2025-12-14T12:11:43", "exit_time": "2025-12-16T01:48:13", "entry_price": 1.08416, "exit_price": 1.08046, "sl_price": 1.08045, "tp_price": 1.09479, "lots": 0.27, "pnl_usd": -88.34, "pnl_r": -0.883, "exit_reason": "trailing", "duration_bars": 451}, {"id": 119, "symbol": "USDCAD", "strategy": "komjathy", "direction": "sell", "entry_time": "2025-12-14T19:51:36", "exit_time": "2025-12-16T02:13:02", "entry_price": 1.36081, "exit_price": 1.36482, "sl_price": 1.36469, "tp_price": 1.34959, "lots": 0.26, "pnl_usd": -52.65, "pnl_r": -0.527, "exit_reason": "trailing", "duration_bars": 364}, {"id": 83, "symbol": "GBPUSD", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2025-12-18T10:25:51", "exit_time": "2025-12-19T09:23:17", "entry_price": 1.26428, "exit_price": 1.2508, "sl_price": 1.26773, "tp_price": 1.2508, "lots": 0.29, "pnl_usd": 196.2, "pnl_r": 1.962, "exit_reason": "tp", "duration_bars": 275}, {"id": 18, "symbol": "EURJPY", "strategy": "macd_stochastic", "direction": "sell", "entry_time": "2025-12-19T09:34:49", "exit_time": "2025-12-20T00:22:42", "entry_price": 161.2059, "exit_price": 161.57149, "sl_price": 161.56593, "tp_price": 160.47466, "lots": 0.31, "pnl_usd": -54.28, "pnl_r": -0.543, "exit_reason": "sl", "duration_bars": 177}, {"id": 3, "symbol": "EURUSD", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2025-12-20T09:17:29", "exit_time": "2025-12-20T22:21:59", "entry_price": 1.08506, "exit_price": 1.07454, "sl_price": 1.08805, "tp_price": 1.07454, "lots": 0.33, "pnl_usd": 292.27, "pnl_r": 2.923, "exit_reason": "tp", "duration_bars": 156}, {"id": 6, "symbol": "GBPUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2025-12-21T07:15:46", "exit_time": "2025-12-22T18:24:12", "entry_price": 1.26409, "exit_price": 1.26112, "sl_price": 1.26121, "tp_price": 1.2748, "lots": 0.35, "pnl_usd": -104.16, "pnl_r": -1.042, "exit_reason": "sl", "duration_bars": 421}, {"id": 81, "symbol": "EURGBP", "strategy": "komjathy", "direction": "sell", "entry_time": "2025-12-22T22:20:51", "exit_time": "2025-12-23T12:09:09", "entry_price": 0.85475, "exit_price": 0.844, "sl_price": 0.85858, "tp_price": 0.844, "lots": 0.26, "pnl_usd": 116.44, "pnl_r": 1.164, "exit_reason": "tp", "duration_bars": 165}, {"id": 11, "symbol": "XAUUSD", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2025-12-22T23:19:42", "exit_time": "2025-12-23T02:38:26", "entry_price": 2313.7919, "exit_price": 2337.36642, "sl_price": 2335.37399, "tp_price": 2249.44452, "lots": 0.46, "pnl_usd": -97.16, "pnl_r": -0.972, "exit_reason": "sl", "duration_bars": 39}, {"id": 113, "symbol": "USDCAD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2025-12-24T10:32:20", "exit_time": "2025-12-25T06:57:15", "entry_price": 1.36084, "exit_price": 1.3639, "sl_price": 1.35914, "tp_price": 1.3639, "lots": 0.59, "pnl_usd": 161.05, "pnl_r": 1.61, "exit_reason": "tp", "duration_bars": 244}, {"id": 63, "symbol": "USDJPY", "strategy": "macd_stochastic", "direction": "sell", "entry_time": "2025-12-25T04:30:04", "exit_time": "2025-12-26T10:03:09", "entry_price": 148.59874, "exit_price": 148.85556, "sl_price": 148.84269, "tp_price": 147.9853, "lots": 0.46, "pnl_usd": -70.17, "pnl_r": -0.702, "exit_reason": "trailing", "duration_bars": 354}, {"id": 82, "symbol": "GBPJPY", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2025-12-25T15:03:47", "exit_time": "2025-12-26T05:31:40", "entry_price": 188.71081, "exit_price": 189.21494, "sl_price": 188.54464, "tp_price": 189.21494, "lots": 0.67, "pnl_usd": 270.2, "pnl_r": 2.702, "exit_reason": "tp", "duration_bars": 173}, {"id": 68, "symbol": "USDCHF", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2025-12-26T03:47:06", "exit_time": "2025-12-27T16:26:22", "entry_price": 0.90412, "exit_price": 0.89947, "sl_price": 0.90572, "tp_price": 0.89947, "lots": 0.62, "pnl_usd": 176.65, "pnl_r": 1.767, "exit_reason": "tp", "duration_bars": 439}, {"id": 42, "symbol": "XAUUSD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2025-12-26T21:49:11", "exit_time": "2025-12-27T20:55:14", "entry_price": 2324.69346, "exit_price": 2305.09704, "sl_price": 2304.04881, "tp_price": 2375.49234, "lots": 0.48, "pnl_usd": -59.46, "pnl_r": -0.595, "exit_reason": "sl", "duration_bars": 277}, {"id": 35, "symbol": "EURJPY", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2025-12-27T04:32:37", "exit_time": "2025-12-28T06:13:13", "entry_price": 161.14529, "exit_price": 160.70781, "sl_price": 161.431, "tp_price": 160.70781, "lots": 0.39, "pnl_usd": 166.69, "pnl_r": 1.667, "exit_reason": "tp", "duration_bars": 308}, {"id": 39, "symbol": "EURUSD", "strategy": "macd_stochastic", "direction": "sell", "entry_time": "2025-12-28T09:13:25", "exit_time": "2025-12-30T04:47:06", "entry_price": 1.08592, "exit_price": 1.07912, "sl_price": 1.08817, "tp_price": 1.07912, "lots": 0.44, "pnl_usd": 277.32, "pnl_r": 2.773, "exit_reason": "tp", "duration_bars": 522}, {"id": 72, "symbol": "USDCAD", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-01-02T01:41:55", "exit_time": "2026-01-03T16:15:01", "entry_price": 1.35987, "exit_price": 1.35202, "sl_price": 1.36272, "tp_price": 1.35202, "lots": 0.35, "pnl_usd": 237.37, "pnl_r": 2.374, "exit_reason": "tp", "duration_bars": 462}, {"id": 67, "symbol": "USDJPY", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-01-05T10:52:45", "exit_time": "2026-01-05T20:54:05", "entry_price": 148.55795, "exit_price": 148.25907, "sl_price": 148.2452, "tp_price": 149.61524, "lots": 0.36, "pnl_usd": -58.6, "pnl_r": -0.586, "exit_reason": "trailing", "duration_bars": 120}, {"id": 86, "symbol": "EURGBP", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-01-06T15:56:12", "exit_time": "2026-01-07T02:49:35", "entry_price": 0.85506, "exit_price": 0.86209, "sl_price": 0.85149, "tp_price": 0.86209, "lots": 0.28, "pnl_usd": 238.7, "pnl_r": 2.387, "exit_reason": "tp", "duration_bars": 130}, {"id": 95, "symbol": "USDJPY", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-01-07T00:40:33", "exit_time": "2026-01-08T15:05:55", "entry_price": 148.55594, "exit_price": 148.27185, "sl_price": 148.27356, "tp_price": 149.40818, "lots": 0.39, "pnl_usd": -64.18, "pnl_r": -0.642, "exit_reason": "trailing", "duration_bars": 461}, {"id": 37, "symbol": "XAUUSD", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-01-07T01:04:51", "exit_time": "2026-01-08T01:46:18", "entry_price": 2311.56281, "exit_price": 2264.27333, "sl_price": 2327.40122, "tp_price": 2264.27333, "lots": 0.63, "pnl_usd": 178.66, "pnl_r": 1.787, "exit_reason": "tp", "duration_bars": 296}, {"id": 34, "symbol": "USDCHF", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-01-07T02:08:44", "exit_time": "2026-01-08T02:30:40", "entry_price": 0.90565, "exit_price": 0.90203, "sl_price": 0.90219, "tp_price": 0.91852, "lots": 0.29, "pnl_usd": -82.28, "pnl_r": -0.823, "exit_reason": "sl", "duration_bars": 292}, {"id": 12, "symbol": "AUDUSD", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-01-07T17:53:10", "exit_time": "2026-01-08T21:41:22", "entry_price": 0.64505, "exit_price": 0.64772, "sl_price": 0.64783, "tp_price": 0.63655, "lots": 0.36, "pnl_usd": -90.93, "pnl_r": -0.909, "exit_reason": "trailing", "duration_bars": 333}, {"id": 99, "symbol": "GBPJPY", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-01-08T08:38:04", "exit_time": "2026-01-08T12:14:25", "entry_price": 188.79519, "exit_price": 189.1949, "sl_price": 189.18537, "tp_price": 187.61044, "lots": 0.28, "pnl_usd": -106.39, "pnl_r": -1.064, "exit_reason": "sl", "duration_bars": 43}, {"id": 38, "symbol": "XAUUSD", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-01-09T01:25:52", "exit_time": "2026-01-10T18:28:52", "entry_price": 2318.47787, "exit_price": 2190.25951, "sl_price": 2351.78889, "tp_price": 2190.25951, "lots": 0.3, "pnl_usd": 192.24, "pnl_r": 1.922, "exit_reason": "tp", "duration_bars": 492}, {"id": 25, "symbol": "EURUSD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-01-09T08:42:45", "exit_time": "2026-01-10T14:32:02", "entry_price": 1.08552, "exit_price": 1.08163, "sl_price": 1.08174, "tp_price": 1.09696, "lots": 0.26, "pnl_usd": -93.32, "pnl_r": -0.933, "exit_reason": "sl", "duration_bars": 357}, {"id": 120, "symbol": "XAUUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-01-09T11:18:00", "exit_time": "2026-01-10T01:56:07", "entry_price": 2324.19634, "exit_price": 2291.06632, "sl_price": 2290.39567, "tp_price": 2455.6, "lots": 0.3, "pnl_usd": -118.31, "pnl_r": -1.183, "exit_reason": "sl", "duration_bars": 175}, {"id": 66, "symbol": "USDCAD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-01-11T12:08:07", "exit_time": "2026-01-11T18:18:29", "entry_price": 1.35993, "exit_price": 1.36395, "sl_price": 1.35805, "tp_price": 1.36395, "lots": 0.53, "pnl_usd": 232.35, "pnl_r": 2.323, "exit_reason": "tp", "duration_bars": 74}, {"id": 8, "symbol": "USDJPY", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-01-13T14:53:01", "exit_time": "2026-01-15T01:13:27", "entry_price": 148.45434, "exit_price": 149.68073, "sl_price": 148.08081, "tp_price": 149.68073, "lots": 0.3, "pnl_usd": 107.47, "pnl_r": 1.075, "exit_reason": "tp", "duration_bars": 412}, {"id": 43, "symbol": "EURGBP", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-01-15T06:41:23", "exit_time": "2026-01-16T19:52:14", "entry_price": 0.85486, "exit_price": 0.85747, "sl_price": 0.85734, "tp_price": 0.85021, "lots": 0.4, "pnl_usd": -56.51, "pnl_r": -0.565, "exit_reason": "sl", "duration_bars": 446}, {"id": 108, "symbol": "XAUUSD", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-01-16T16:41:37", "exit_time": "2026-01-17T06:08:14", "entry_price": 2316.87261, "exit_price": 2250.30726, "sl_price": 2341.21837, "tp_price": 2250.30726, "lots": 0.41, "pnl_usd": 296.51, "pnl_r": 2.965, "exit_reason": "tp", "duration_bars": 161}, {"id": 103, "symbol": "XAUUSD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-01-17T09:54:26", "exit_time": "2026-01-19T09:11:08", "entry_price": 2329.19794, "exit_price": 2298.91259, "sl_price": 2298.39049, "tp_price": 2393.73781, "lots": 0.32, "pnl_usd": -78.83, "pnl_r": -0.788, "exit_reason": "sl", "duration_bars": 567}, {"id": 109, "symbol": "GBPUSD", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2026-01-17T12:06:44", "exit_time": "2026-01-18T16:32:42", "entry_price": 1.26525, "exit_price": 1.25548, "sl_price": 1.26909, "tp_price": 1.25548, "lots": 0.26, "pnl_usd": 142.22, "pnl_r": 1.422, "exit_reason": "tp", "duration_bars": 341}, {"id": 4, "symbol": "GBPJPY", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-01-21T07:59:55", "exit_time": "2026-01-21T15:05:53", "entry_price": 188.72921, "exit_price": 188.5771, "sl_price": 188.55753, "tp_price": 189.40492, "lots": 0.65, "pnl_usd": -76.55, "pnl_r": -0.766, "exit_reason": "sl", "duration_bars": 85}, {"id": 7, "symbol": "USDCHF", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-01-21T15:55:30", "exit_time": "2026-01-22T18:10:22", "entry_price": 0.90589, "exit_price": 0.90324, "sl_price": 0.90338, "tp_price": 0.9145, "lots": 0.4, "pnl_usd": -79.75, "pnl_r": -0.797, "exit_reason": "sl", "duration_bars": 314}, {"id": 110, "symbol": "GBPUSD", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2026-01-21T21:37:31", "exit_time": "2026-01-22T20:52:53", "entry_price": 1.264, "exit_price": 1.26778, "sl_price": 1.26766, "tp_price": 1.25528, "lots": 0.27, "pnl_usd": -53.06, "pnl_r": -0.531, "exit_reason": "trailing", "duration_bars": 279}, {"id": 46, "symbol": "USDCHF", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-01-21T22:00:16", "exit_time": "2026-01-22T11:55:09", "entry_price": 0.9057, "exit_price": 0.90757, "sl_price": 0.90776, "tp_price": 0.90152, "lots": 0.49, "pnl_usd": -57.41, "pnl_r": -0.574, "exit_reason": "sl", "duration_bars": 166}, {"id": 20, "symbol": "USDJPY", "strategy": "komjathy", "direction": "buy", "entry_time": "2026-01-23T20:36:16", "exit_time": "2026-01-24T23:26:14", "entry_price": 148.45745, "exit_price": 148.09059, "sl_price": 148.10576, "tp_price": 149.27116, "lots": 0.32, "pnl_usd": -105.65, "pnl_r": -1.056, "exit_reason": "sl", "duration_bars": 321}, {"id": 13, "symbol": "EURUSD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-01-25T05:23:39", "exit_time": "2026-01-27T02:44:40", "entry_price": 1.08441, "exit_price": 1.09262, "sl_price": 1.08041, "tp_price": 1.09262, "lots": 0.25, "pnl_usd": 276.85, "pnl_r": 2.769, "exit_reason": "tp", "duration_bars": 544}, {"id": 23, "symbol": "EURJPY", "strategy": "komjathy", "direction": "buy", "entry_time": "2026-01-26T04:37:33", "exit_time": "2026-01-26T13:09:44", "entry_price": 161.20029, "exit_price": 162.39436, "sl_price": 160.83714, "tp_price": 162.39436, "lots": 0.31, "pnl_usd": 146.81, "pnl_r": 1.468, "exit_reason": "tp", "duration_bars": 102}, {"id": 91, "symbol": "USDCAD", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-01-26T22:32:09", "exit_time": "2026-01-27T08:27:53", "entry_price": 1.3596, "exit_price": 1.36189, "sl_price": 1.3617, "tp_price": 1.35538, "lots": 0.48, "pnl_usd": -59.56, "pnl_r": -0.596, "exit_reason": "sl", "duration_bars": 119}, {"id": 47, "symbol": "AUDUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-01-28T10:10:31", "exit_time": "2026-01-28T17:06:55", "entry_price": 0.64447, "exit_price": 0.64967, "sl_price": 0.64225, "tp_price": 0.64967, "lots": 0.45, "pnl_usd": 258.47, "pnl_r": 2.585, "exit_reason": "tp", "duration_bars": 83}, {"id": 27, "symbol": "USDCHF", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2026-01-28T19:38:30", "exit_time": "2026-01-28T23:26:00", "entry_price": 0.90512, "exit_price": 0.90905, "sl_price": 0.90904, "tp_price": 0.89046, "lots": 0.25, "pnl_usd": -94.15, "pnl_r": -0.941, "exit_reason": "sl", "duration_bars": 45}, {"id": 76, "symbol": "GBPUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-01-28T21:06:27", "exit_time": "2026-01-29T14:45:54", "entry_price": 1.26502, "exit_price": 1.26312, "sl_price": 1.26327, "tp_price": 1.27192, "lots": 0.57, "pnl_usd": -78.63, "pnl_r": -0.786, "exit_reason": "sl", "duration_bars": 211}, {"id": 80, "symbol": "USDCHF", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-01-31T09:54:52", "exit_time": "2026-02-01T18:30:36", "entry_price": 0.9052, "exit_price": 0.894, "sl_price": 0.90854, "tp_price": 0.894, "lots": 0.3, "pnl_usd": 167.79, "pnl_r": 1.678, "exit_reason": "tp", "duration_bars": 391}, {"id": 77, "symbol": "USDJPY", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-02-01T00:22:20", "exit_time": "2026-02-02T19:22:22", "entry_price": 148.56323, "exit_price": 148.92017, "sl_price": 148.33149, "tp_price": 148.92017, "lots": 0.48, "pnl_usd": 231.93, "pnl_r": 2.319, "exit_reason": "tp", "duration_bars": 516}, {"id": 65, "symbol": "EURJPY", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-02-01T14:31:25", "exit_time": "2026-02-03T09:28:24", "entry_price": 161.25352, "exit_price": 160.96843, "sl_price": 160.96255, "tp_price": 161.74192, "lots": 0.38, "pnl_usd": -105.67, "pnl_r": -1.057, "exit_reason": "sl", "duration_bars": 515}, {"id": 40, "symbol": "XAUUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-02-04T16:37:50", "exit_time": "2026-02-05T16:02:13", "entry_price": 2328.86654, "exit_price": 2297.27858, "sl_price": 2296.95671, "tp_price": 2407.44517, "lots": 0.31, "pnl_usd": -104.6, "pnl_r": -1.046, "exit_reason": "trailing", "duration_bars": 280}, {"id": 102, "symbol": "GBPJPY", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-02-04T21:19:44", "exit_time": "2026-02-05T23:13:12", "entry_price": 188.63166, "exit_price": 188.31264, "sl_price": 188.33074, "tp_price": 189.82369, "lots": 0.37, "pnl_usd": -82.43, "pnl_r": -0.824, "exit_reason": "trailing", "duration_bars": 310}, {"id": 17, "symbol": "EURUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-02-05T14:17:57", "exit_time": "2026-02-06T18:32:58", "entry_price": 1.08428, "exit_price": 1.08058, "sl_price": 1.08046, "tp_price": 1.09635, "lots": 0.26, "pnl_usd": -53.83, "pnl_r": -0.538, "exit_reason": "sl", "duration_bars": 339}, {"id": 57, "symbol": "GBPUSD", "strategy": "komjathy", "direction": "buy", "entry_time": "2026-02-06T07:04:06", "exit_time": "2026-02-06T18:49:52", "entry_price": 1.26487, "exit_price": 1.26195, "sl_price": 1.2621, "tp_price": 1.27107, "lots": 0.36, "pnl_usd": -83.09, "pnl_r": -0.831, "exit_reason": "trailing", "duration_bars": 141}, {"id": 88, "symbol": "USDCHF", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-02-07T02:11:32", "exit_time": "2026-02-09T00:00:20", "entry_price": 0.90463, "exit_price": 0.90241, "sl_price": 0.90252, "tp_price": 0.91204, "lots": 0.47, "pnl_usd": -114.35, "pnl_r": -1.144, "exit_reason": "trailing", "duration_bars": 549}, {"id": 89, "symbol": "GBPJPY", "strategy": "komjathy", "direction": "buy", "entry_time": "2026-02-07T14:26:57", "exit_time": "2026-02-09T08:03:14", "entry_price": 188.66728, "exit_price": 188.43042, "sl_price": 188.42468, "tp_price": 189.19656, "lots": 0.46, "pnl_usd": -109.99, "pnl_r": -1.1, "exit_reason": "sl", "duration_bars": 499}, {"id": 29, "symbol": "EURJPY", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2026-02-07T16:17:53", "exit_time": "2026-02-09T05:17:23", "entry_price": 161.25593, "exit_price": 161.54158, "sl_price": 161.5306, "tp_price": 160.59169, "lots": 0.4, "pnl_usd": -71.69, "pnl_r": -0.717, "exit_reason": "sl", "duration_bars": 443}, {"id": 61, "symbol": "EURGBP", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2026-02-08T20:50:26", "exit_time": "2026-02-10T02:59:25", "entry_price": 0.85476, "exit_price": 0.84706, "sl_price": 0.85709, "tp_price": 0.84706, "lots": 0.43, "pnl_usd": 177.58, "pnl_r": 1.776, "exit_reason": "tp", "duration_bars": 361}, {"id": 55, "symbol": "AUDUSD", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2026-02-09T17:47:35", "exit_time": "2026-02-10T04:13:07", "entry_price": 0.64461, "exit_price": 0.64845, "sl_price": 0.64856, "tp_price": 0.63108, "lots": 0.25, "pnl_usd": -56.03, "pnl_r": -0.56, "exit_reason": "sl", "duration_bars": 125}, {"id": 64, "symbol": "EURGBP", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2026-02-09T23:41:06", "exit_time": "2026-02-10T06:21:19", "entry_price": 0.85512, "exit_price": 0.83989, "sl_price": 0.85899, "tp_price": 0.83989, "lots": 0.26, "pnl_usd": 277.94, "pnl_r": 2.779, "exit_reason": "tp", "duration_bars": 80}, {"id": 107, "symbol": "EURJPY", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2026-02-13T05:42:58", "exit_time": "2026-02-14T04:10:49", "entry_price": 161.29166, "exit_price": 161.54851, "sl_price": 161.54195, "tp_price": 160.52309, "lots": 0.44, "pnl_usd": -117.65, "pnl_r": -1.176, "exit_reason": "sl", "duration_bars": 269}, {"id": 45, "symbol": "USDCAD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-02-14T21:54:19", "exit_time": "2026-02-15T03:37:39", "entry_price": 1.36034, "exit_price": 1.36734, "sl_price": 1.35759, "tp_price": 1.36734, "lots": 0.36, "pnl_usd": 199.76, "pnl_r": 1.998, "exit_reason": "tp", "duration_bars": 68}, {"id": 52, "symbol": "EURJPY", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-02-16T21:11:36", "exit_time": "2026-02-18T20:43:35", "entry_price": 161.19014, "exit_price": 162.08996, "sl_price": 160.91879, "tp_price": 162.08996, "lots": 0.41, "pnl_usd": 286.61, "pnl_r": 2.866, "exit_reason": "tp", "duration_bars": 570}, {"id": 22, "symbol": "EURGBP", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-02-19T07:02:00", "exit_time": "2026-02-21T00:19:33", "entry_price": 0.855, "exit_price": 0.8638, "sl_price": 0.85176, "tp_price": 0.8638, "lots": 0.31, "pnl_usd": 273.61, "pnl_r": 2.736, "exit_reason": "tp", "duration_bars": 495}, {"id": 70, "symbol": "USDJPY", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-02-20T07:58:36", "exit_time": "2026-02-20T13:10:04", "entry_price": 148.58016, "exit_price": 148.16396, "sl_price": 148.18255, "tp_price": 149.23318, "lots": 0.28, "pnl_usd": -105.83, "pnl_r": -1.058, "exit_reason": "trailing", "duration_bars": 62}, {"id": 56, "symbol": "EURUSD", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-02-22T07:09:35", "exit_time": "2026-02-22T23:14:22", "entry_price": 1.08403, "exit_price": 1.08573, "sl_price": 1.08592, "tp_price": 1.0768, "lots": 0.53, "pnl_usd": -55.62, "pnl_r": -0.556, "exit_reason": "sl", "duration_bars": 192}, {"id": 100, "symbol": "GBPUSD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-02-22T22:56:25", "exit_time": "2026-02-24T14:26:53", "entry_price": 1.26544, "exit_price": 1.26194, "sl_price": 1.26213, "tp_price": 1.27205, "lots": 0.3, "pnl_usd": -52.3, "pnl_r": -0.523, "exit_reason": "sl", "duration_bars": 474}, {"id": 85, "symbol": "GBPUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-02-24T15:14:41", "exit_time": "2026-02-26T08:10:01", "entry_price": 1.26592, "exit_price": 1.26225, "sl_price": 1.26234, "tp_price": 1.27386, "lots": 0.28, "pnl_usd": -100.71, "pnl_r": -1.007, "exit_reason": "trailing", "duration_bars": 491}, {"id": 33, "symbol": "EURUSD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-02-25T07:41:17", "exit_time": "2026-02-26T19:43:47", "entry_price": 1.08493, "exit_price": 1.08183, "sl_price": 1.08169, "tp_price": 1.0958, "lots": 0.31, "pnl_usd": -94.44, "pnl_r": -0.944, "exit_reason": "trailing", "duration_bars": 432}, {"id": 62, "symbol": "AUDUSD", "strategy": "komjathy", "direction": "buy", "entry_time": "2026-02-27T19:17:33", "exit_time": "2026-02-28T00:04:10", "entry_price": 0.64421, "exit_price": 0.64209, "sl_price": 0.64191, "tp_price": 0.64818, "lots": 0.44, "pnl_usd": -113.64, "pnl_r": -1.136, "exit_reason": "trailing", "duration_bars": 57}, {"id": 104, "symbol": "AUDUSD", "strategy": "komjathy", "direction": "buy", "entry_time": "2026-03-01T09:54:18", "exit_time": "2026-03-02T18:07:31", "entry_price": 0.64482, "exit_price": 0.65646, "sl_price": 0.64167, "tp_price": 0.65646, "lots": 0.32, "pnl_usd": 121.87, "pnl_r": 1.219, "exit_reason": "tp", "duration_bars": 386}, {"id": 15, "symbol": "EURGBP", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-03-02T13:04:38", "exit_time": "2026-03-03T17:31:17", "entry_price": 0.8552, "exit_price": 0.84618, "sl_price": 0.85827, "tp_price": 0.84618, "lots": 0.33, "pnl_usd": 155.57, "pnl_r": 1.556, "exit_reason": "tp", "duration_bars": 341}, {"id": 117, "symbol": "XAUUSD", "strategy": "komjathy", "direction": "buy", "entry_time": "2026-03-03T14:40:33", "exit_time": "2026-03-05T10:34:09", "entry_price": 2318.49101, "exit_price": 2285.85655, "sl_price": 2285.09435, "tp_price": 2375.49404, "lots": 0.3, "pnl_usd": -51.56, "pnl_r": -0.516, "exit_reason": "sl", "duration_bars": 526}, {"id": 79, "symbol": "GBPJPY", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-03-03T15:17:57", "exit_time": "2026-03-04T14:08:09", "entry_price": 188.6282, "exit_price": 188.37447, "sl_price": 188.79308, "tp_price": 188.37447, "lots": 0.67, "pnl_usd": 209.64, "pnl_r": 2.096, "exit_reason": "tp", "duration_bars": 274}, {"id": 93, "symbol": "GBPJPY", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-03-04T11:25:50", "exit_time": "2026-03-06T06:07:00", "entry_price": 188.61352, "exit_price": 190.00211, "sl_price": 188.22459, "tp_price": 190.00211, "lots": 0.29, "pnl_usd": 106.35, "pnl_r": 1.063, "exit_reason": "tp", "duration_bars": 512}, {"id": 21, "symbol": "USDCHF", "strategy": "macd_stochastic", "direction": "sell", "entry_time": "2026-03-04T21:09:29", "exit_time": "2026-03-05T19:44:31", "entry_price": 0.90588, "exit_price": 0.90961, "sl_price": 0.90969, "tp_price": 0.89915, "lots": 0.26, "pnl_usd": -74.2, "pnl_r": -0.742, "exit_reason": "trailing", "duration_bars": 271}, {"id": 101, "symbol": "USDCAD", "strategy": "komjathy", "direction": "sell", "entry_time": "2026-03-06T18:59:08", "exit_time": "2026-03-08T15:43:26", "entry_price": 1.36003, "exit_price": 1.35447, "sl_price": 1.36334, "tp_price": 1.35447, "lots": 0.3, "pnl_usd": 286.37, "pnl_r": 2.864, "exit_reason": "tp", "duration_bars": 536}, {"id": 54, "symbol": "EURUSD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-03-07T01:27:35", "exit_time": "2026-03-08T07:48:35", "entry_price": 1.08478, "exit_price": 1.09394, "sl_price": 1.0822, "tp_price": 1.09394, "lots": 0.39, "pnl_usd": 298.67, "pnl_r": 2.987, "exit_reason": "tp", "duration_bars": 364}, {"id": 10, "symbol": "AUDUSD", "strategy": "macd_stochastic", "direction": "sell", "entry_time": "2026-03-07T03:07:22", "exit_time": "2026-03-09T02:35:27", "entry_price": 0.64428, "exit_price": 0.63698, "sl_price": 0.6463, "tp_price": 0.63698, "lots": 0.5, "pnl_usd": 132.95, "pnl_r": 1.33, "exit_reason": "tp", "duration_bars": 569}, {"id": 26, "symbol": "USDCHF", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2026-03-08T02:16:21", "exit_time": "2026-03-09T09:26:50", "entry_price": 0.90539, "exit_price": 0.89376, "sl_price": 0.9087, "tp_price": 0.89376, "lots": 0.3, "pnl_usd": 157.8, "pnl_r": 1.578, "exit_reason": "tp", "duration_bars": 374}, {"id": 16, "symbol": "GBPUSD", "strategy": "momentum_pullback", "direction": "buy", "entry_time": "2026-03-08T15:08:51", "exit_time": "2026-03-09T06:49:54", "entry_price": 1.26495, "exit_price": 1.26791, "sl_price": 1.26326, "tp_price": 1.26791, "lots": 0.59, "pnl_usd": 200.39, "pnl_r": 2.004, "exit_reason": "tp", "duration_bars": 188}, {"id": 116, "symbol": "USDJPY", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-03-08T15:15:40", "exit_time": "2026-03-09T16:35:25", "entry_price": 148.41554, "exit_price": 148.21304, "sl_price": 148.22652, "tp_price": 149.10763, "lots": 0.59, "pnl_usd": -119.91, "pnl_r": -1.199, "exit_reason": "sl", "duration_bars": 303}, {"id": 94, "symbol": "EURJPY", "strategy": "macd_stochastic", "direction": "sell", "entry_time": "2026-03-09T10:37:36", "exit_time": "2026-03-10T07:51:25", "entry_price": 161.16751, "exit_price": 161.43759, "sl_price": 161.43765, "tp_price": 160.478, "lots": 0.41, "pnl_usd": -91.21, "pnl_r": -0.912, "exit_reason": "sl", "duration_bars": 254}, {"id": 105, "symbol": "XAUUSD", "strategy": "komjathy", "direction": "buy", "entry_time": "2026-03-10T06:03:48", "exit_time": "2026-03-12T02:49:59", "entry_price": 2315.48375, "exit_price": 2382.64098, "sl_price": 2290.61468, "tp_price": 2382.64098, "lots": 0.4, "pnl_usd": 141.92, "pnl_r": 1.419, "exit_reason": "tp", "duration_bars": 537}, {"id": 75, "symbol": "GBPJPY", "strategy": "momentum_pullback", "direction": "sell", "entry_time": "2026-03-11T07:45:34", "exit_time": "2026-03-12T06:15:48", "entry_price": 188.74677, "exit_price": 188.89802, "sl_price": 188.89964, "tp_price": 188.15719, "lots": 0.73, "pnl_usd": -71.06, "pnl_r": -0.711, "exit_reason": "sl", "duration_bars": 270}, {"id": 114, "symbol": "XAUUSD", "strategy": "komjathy", "direction": "buy", "entry_time": "2026-03-12T03:37:38", "exit_time": "2026-03-13T07:09:08", "entry_price": 2325.02531, "exit_price": 2294.85115, "sl_price": 2294.42653, "tp_price": 2377.62969, "lots": 0.33, "pnl_usd": -111.15, "pnl_r": -1.112, "exit_reason": "sl", "duration_bars": 330}, {"id": 87, "symbol": "USDCAD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-03-12T10:55:01", "exit_time": "2026-03-13T20:01:00", "entry_price": 1.3609, "exit_price": 1.35864, "sl_price": 1.35882, "tp_price": 1.36771, "lots": 0.48, "pnl_usd": -92.75, "pnl_r": -0.927, "exit_reason": "sl", "duration_bars": 397}, {"id": 84, "symbol": "EURUSD", "strategy": "macd_stochastic", "direction": "buy", "entry_time": "2026-03-13T06:17:48", "exit_time": "2026-03-15T02:38:51", "entry_price": 1.08562, "exit_price": 1.09362, "sl_price": 1.08186, "tp_price": 1.09362, "lots": 0.27, "pnl_usd": 244.97, "pnl_r": 2.45, "exit_reason": "tp", "duration_bars": 532}]};
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = (n, dp=2) => n === undefined ? '—' : (n >= 0 ? '+' : '') + n.toFixed(dp);
+const fmtUsd = n => (n >= 0 ? '+$' : '-$') + Math.abs(n).toFixed(2);
+
+function colorPnl(el, v) {
+  el.classList.remove('pos','neg','neutral');
+  el.classList.add(v > 0 ? 'pos' : v < 0 ? 'neg' : 'neutral');
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Header
+// ──────────────────────────────────────────────────────────────────────────────
+const badge = $('modeBadge');
+badge.textContent = DATA.mode === 'dummy' ? 'DEMO / DUMMY DATA' : 'LIVE FORWARD TESTING';
+badge.className = 'badge ' + (DATA.mode === 'dummy' ? 'badge-dummy' : 'badge-live');
+$('generatedAt').textContent = 'Updated: ' + DATA.generated_at.replace('T',' ').replace('Z','') + ' UTC';
+
+// ──────────────────────────────────────────────────────────────────────────────
+// KPI Grid
+// ──────────────────────────────────────────────────────────────────────────────
+const s = DATA.stats;
+const kpis = [
+  { label:'Total Trades',    value: s.total_trades,            color:'var(--accent)' },
+  { label:'Win Rate',        value: s.win_rate_pct + '%',      color: s.win_rate_pct >= 50 ? 'var(--green)' : 'var(--red)' },
+  { label:'Total P&L',       value: fmtUsd(s.total_pnl_usd),  color: s.total_pnl_usd >= 0 ? 'var(--green)' : 'var(--red)' },
+  { label:'Return',          value: fmt(s.return_pct,1) + '%', color: s.return_pct >= 0 ? 'var(--green)' : 'var(--red)' },
+  { label:'Total R',         value: fmt(s.total_r,2)+'R',     color: s.total_r >= 0 ? 'var(--green)' : 'var(--red)' },
+  { label:'R / Day',         value: fmt(s.r_per_day,3)+'R',   color:'var(--gold)' },
+  { label:'Profit Factor',   value: s.profit_factor,           color: s.profit_factor >= 1.5 ? 'var(--green)' : 'var(--gold)' },
+  { label:'Max Drawdown',    value: s.max_drawdown_pct + '%',  color: s.max_drawdown_pct < 10 ? 'var(--green)' : 'var(--red)' },
+  { label:'Avg Win $',       value: fmtUsd(s.avg_win_usd),     color:'var(--green)' },
+  { label:'Avg Loss $',      value: fmtUsd(s.avg_loss_usd),    color:'var(--red)' },
+  { label:'Final Equity',    value: '$' + s.final_equity.toLocaleString(), color:'var(--accent)' },
+  { label:'Period',          value: DATA.period.start + ' → ' + DATA.period.end, color:'var(--muted)', small:true },
+];
+
+const grid = $('kpiGrid');
+kpis.forEach(k => {
+  const card = document.createElement('div');
+  card.className = 'kpi-card';
+  card.style.setProperty('--accent-color', k.color);
+  card.innerHTML = `
+    <div class="kpi-label">${k.label}</div>
+    <div class="kpi-value" style="color:${k.color};${k.small?'font-size:1rem;':''}">
+      ${k.value}
+    </div>`;
+  grid.appendChild(card);
+});
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Equity Curve
+// ──────────────────────────────────────────────────────────────────────────────
+(function() {
+  const curve = DATA.equity_curve;
+  const labels = curve.map(p => p.time.slice(0,10));
+  const values = curve.map(p => p.equity);
+  const color = values[values.length-1] >= values[0] ? '#00e676' : '#ff5252';
+  new Chart($('equityChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Equity ($)',
+        data: values,
+        borderColor: color,
+        backgroundColor: color + '18',
+        fill: true,
+        pointRadius: 0,
+        borderWidth: 2,
+        tension: 0.3,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ' $' + ctx.parsed.y.toFixed(2) } } },
+      scales: {
+        x: { ticks: { color: '#7070a0', maxTicksLimit: 8 },
+             grid: { color: '#1e1e3a' } },
+        y: { ticks: { color: '#7070a0',
+               callback: v => '$' + v.toLocaleString() },
+             grid: { color: '#1e1e3a' } }
+      }
+    }
+  });
+})();
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Symbol Pie
+// ──────────────────────────────────────────────────────────────────────────────
+(function() {
+  const sym = s.by_symbol;
+  const labels = Object.keys(sym);
+  const counts = labels.map(k => sym[k].trades);
+  const PALETTE = ['#00d4ff','#ffd700','#00e676','#ff5252','#ff9800',
+                   '#e040fb','#40c4ff','#69f0ae','#ff6e40','#ea80fc'];
+  new Chart($('symbolPieChart'), {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{ data: counts, backgroundColor: PALETTE, borderWidth: 2,
+                   borderColor: '#14142a' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'right',
+                  labels: { color: '#e0e0f0', font: { size: 11 } } }
+      }
+    }
+  });
+})();
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Weekly Bar Chart
+// ──────────────────────────────────────────────────────────────────────────────
+(function() {
+  const weeks = Object.keys(s.weekly_pnl).sort();
+  const pnls = weeks.map(w => s.weekly_pnl[w]);
+  const bgColors = pnls.map(v => v >= 0 ? '#00e67640' : '#ff525240');
+  const borderColors = pnls.map(v => v >= 0 ? '#00e676' : '#ff5252');
+  new Chart($('weeklyBarChart'), {
+    type: 'bar',
+    data: {
+      labels: weeks,
+      datasets: [{
+        label: 'Weekly P&L ($)',
+        data: pnls,
+        backgroundColor: bgColors,
+        borderColor: borderColors,
+        borderWidth: 2,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ' $' + ctx.parsed.y.toFixed(2) } } },
+      scales: {
+        x: { ticks: { color: '#7070a0' }, grid: { color: '#1e1e3a' } },
+        y: { ticks: { color: '#7070a0',
+               callback: v => '$' + v }, grid: { color: '#1e1e3a' } }
+      }
+    }
+  });
+  $('weeklyBarChart').style.maxHeight = '240px';
+})();
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Symbol Breakdown Cards
+// ──────────────────────────────────────────────────────────────────────────────
+let activeSymbol = '';
+function renderSymbolGrid() {
+  const grid = $('symbolGrid');
+  grid.innerHTML = '';
+  const sym = s.by_symbol;
+  Object.entries(sym).forEach(([name, info]) => {
+    const card = document.createElement('div');
+    card.className = 'sym-card' + (activeSymbol === name ? ' active' : '');
+    const pnlCls = info.total_pnl >= 0 ? 'pos' : 'neg';
+    card.innerHTML = `
+      <div class="sym-name">${name}</div>
+      <div class="sym-stats">
+        <div class="sym-stat"><span>Trades </span>${info.trades}</div>
+        <div class="sym-stat"><span>WR </span>${info.win_rate}%</div>
+        <div class="sym-stat ${pnlCls}">$${info.total_pnl >= 0 ? '+' : ''}${info.total_pnl.toFixed(0)}</div>
+        <div class="sym-stat ${info.total_r >= 0 ? 'pos' : 'neg'}">${fmt(info.total_r,1)}R</div>
+      </div>`;
+    card.addEventListener('click', () => {
+      activeSymbol = activeSymbol === name ? '' : name;
+      $('filterSymbol').value = activeSymbol;
+      renderSymbolGrid();
+      applyFilters();
+    });
+    grid.appendChild(card);
+  });
+}
+renderSymbolGrid();
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Trade Table with pagination + filtering
+// ──────────────────────────────────────────────────────────────────────────────
+const ROWS_PER_PAGE = 20;
+let currentPage = 1;
+let sortCol = 'entry_time';
+let sortAsc = false;
+let filteredTrades = [...DATA.trades];
+
+// Populate filter dropdowns
+const symbols = [...new Set(DATA.trades.map(t => t.symbol))].sort();
+symbols.forEach(sym => {
+  const opt = new Option(sym, sym);
+  $('filterSymbol').add(opt);
+});
+const strategies = [...new Set(DATA.trades.map(t => t.strategy))].sort();
+strategies.forEach(str => {
+  const opt = new Option(str.replace(/_/g,' '), str);
+  $('filterStrategy').add(opt);
+});
+
+function applyFilters() {
+  const sym = $('filterSymbol').value;
+  const dir = $('filterDir').value;
+  const exit = $('filterExit').value;
+  const strat = $('filterStrategy').value;
+  const search = $('searchInput').value.toLowerCase();
+  filteredTrades = DATA.trades.filter(t => {
+    if (sym && t.symbol !== sym) return false;
+    if (dir && t.direction !== dir) return false;
+    if (exit && t.exit_reason !== exit) return false;
+    if (strat && t.strategy !== strat) return false;
+    if (search && !JSON.stringify(t).toLowerCase().includes(search)) return false;
+    return true;
+  });
+  // Sort
+  filteredTrades.sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (typeof va === 'string') va = va.toLowerCase(), vb = vb.toLowerCase();
+    return sortAsc ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+  });
+  currentPage = 1;
+  renderTable();
+}
+
+function renderTable() {
+  const tbody = $('tradeBody');
+  tbody.innerHTML = '';
+  const start = (currentPage - 1) * ROWS_PER_PAGE;
+  const page = filteredTrades.slice(start, start + ROWS_PER_PAGE);
+  page.forEach(t => {
+    const pnlCls = t.pnl_usd >= 0 ? 'pos' : 'neg';
+    const exitCls = 'reason reason-' + t.exit_reason;
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${t.id}</td>
+      <td>${t.entry_time.replace('T',' ')}</td>
+      <td><strong>${t.symbol}</strong></td>
+      <td class="dir-${t.direction}">${t.direction.toUpperCase()}</td>
+      <td>${t.entry_price}</td>
+      <td>${t.exit_price}</td>
+      <td>${t.lots}</td>
+      <td class="${pnlCls}">${fmtUsd(t.pnl_usd)}</td>
+      <td class="${pnlCls}">${fmt(t.pnl_r,2)}R</td>
+      <td><span class="${exitCls}">${t.exit_reason.toUpperCase()}</span></td>
+      <td>${t.duration_bars}</td>`;
+    tbody.appendChild(row);
+  });
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = Math.ceil(filteredTrades.length / ROWS_PER_PAGE);
+  const pg = $('pagination');
+  pg.innerHTML = '';
+  const add = (label, page, active=false, disabled=false) => {
+    const btn = document.createElement('button');
+    btn.className = 'page-btn' + (active ? ' active' : '');
+    btn.textContent = label;
+    btn.disabled = disabled;
+    btn.onclick = () => { currentPage = page; renderTable(); };
+    pg.appendChild(btn);
+  };
+  add('«', 1, false, currentPage === 1);
+  add('‹', currentPage - 1, false, currentPage === 1);
+  const lo = Math.max(1, currentPage - 2);
+  const hi = Math.min(total, currentPage + 2);
+  for (let i = lo; i <= hi; i++) add(i, i, i === currentPage);
+  add('›', currentPage + 1, false, currentPage === total);
+  add('»', total, false, currentPage === total);
+  const info = document.createElement('span');
+  info.style.cssText = 'font-size:12px;color:var(--muted);margin-left:8px';
+  info.textContent = `${filteredTrades.length} trades`;
+  pg.appendChild(info);
+}
+
+// Column sort
+document.querySelectorAll('thead th[data-col]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (sortCol === col) sortAsc = !sortAsc;
+    else { sortCol = col; sortAsc = true; }
+    applyFilters();
+  });
+});
+
+// Filter events
+['filterSymbol','filterDir','filterExit','filterStrategy','searchInput']
+  .forEach(id => $(id).addEventListener('change', applyFilters));
+$('searchInput').addEventListener('input', applyFilters);
+
+applyFilters(); // initial render
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Weekly summary cards
+// ──────────────────────────────────────────────────────────────────────────────
+(function() {
+  const grid = $('weeklyGrid');
+  const weeks = Object.keys(s.weekly_pnl).sort();
+  weeks.forEach(w => {
+    const pnl = s.weekly_pnl[w];
+    const r = s.weekly_r[w];
+    const card = document.createElement('div');
+    card.className = 'week-card';
+    card.innerHTML = `
+      <div class="week-label">${w}</div>
+      <div class="week-pnl ${pnl >= 0 ? 'pos' : 'neg'}">${fmtUsd(pnl)}</div>
+      <div class="week-r">${fmt(r,2)}R</div>`;
+    grid.appendChild(card);
+  });
+})();
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Footer
+// ──────────────────────────────────────────────────────────────────────────────
+$('footer').textContent =
+  'TradeHub Forward Testing Dashboard · Generated ' + new Date().toUTCString();
+</script>
+</body>
+</html>
