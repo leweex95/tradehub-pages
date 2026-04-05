@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TradeHub Monitoring</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <span class="brand-dot"></span>
+        <span class="brand-name">TradeHub <span class="brand-muted">/ monitoring</span></span>
+      </div>
+      <div class="header-right">
+        <div id="header-status" class="header-status"></div>
+        <button id="ci-run-btn" class="ci-run-btn" title="Trigger the monitoring backtest CI job and redeploy to GitHub Pages">
+          &#9654; Run backtests
+        </button>
+        <button id="refresh-btn" class="refresh-btn" title="Re-fetch monitoring-history.json and reload the dashboard">
+          &#x21bb; Refresh data
+        </button>
+        <nav class="header-nav" aria-label="Site navigation">
+          <a href="../../../index.html" class="header-nav-link">Home</a>
+        </nav>
+        <button id="theme-toggle" class="theme-btn" aria-label="Toggle theme" title="Toggle dark / light">
+          <span class="theme-icon theme-icon-dark">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </span>
+          <span class="theme-icon theme-icon-light">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          </span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <!-- ── Hero ────────────────────────────────────────────────────────────── -->
+    <section class="hero panel">
+      <div class="hero-text">
+        <p class="eyebrow">Long-term regression dashboard</p>
+        <h1>Strategy performance <em>over time</em></h1>
+        <p class="lede">
+          Daily fixed-scope backtests — runtime stability, profitability drift,
+          result fingerprints and input fingerprints. Public output exposes only
+          aggregates, hashes, dates, and symbol scope.
+        </p>
+      </div>
+      <div class="hero-kpis" id="hero-kpis"></div>
+    </section>
+
+    <!-- ── Aggregate plots (all strategies, all runs) ───────────────────────── -->
+    <section class="agg-section">
+      <div class="agg-header">
+        <div>
+          <p class="eyebrow">All strategies — daily aggregate</p>
+          <h2 class="section-title">Runtime &amp; profitability trend</h2>
+        </div>
+        <div class="agg-legend" id="agg-legend"></div>
+      </div>
+      <!-- Strategy filter -->
+      <div class="strat-filter-wrap" id="strat-filter"></div>
+      <div class="chart-pair">
+        <article class="panel chart-card">
+          <div class="chart-card-head">
+            <div>
+              <p class="eyebrow">Speed stability</p>
+              <h3>Runtime over time</h3>
+            </div>
+            <p class="chart-note" id="agg-runtime-note"></p>
+          </div>
+          <div class="plot" id="agg-runtime-chart"></div>
+        </article>
+        <article class="panel chart-card">
+          <div class="chart-card-head">
+            <div>
+              <p class="eyebrow">Profitability trend</p>
+              <h3>Net PnL by run</h3>
+            </div>
+            <p class="chart-note" id="agg-pnl-note"></p>
+          </div>
+          <div class="plot" id="agg-pnl-chart"></div>
+        </article>
+      </div>
+      <!-- Aggregate / single-strategy equity curve -->
+      <article class="panel chart-card" id="agg-equity-wrap" style="display:none">
+        <div class="chart-card-head">
+          <div>
+            <p class="eyebrow" id="agg-equity-eyebrow">Portfolio equity</p>
+            <h3 id="agg-equity-title">Cumulative P&amp;L across all trades</h3>
+          </div>
+          <p class="chart-note" id="agg-equity-note">Click any dot to jump to that trade below</p>
+        </div>
+        <div id="agg-equity-chart" style="min-height:240px"></div>
+      </article>
+    </section>
+
+    <!-- ── Strategy tabs ────────────────────────────────────────────────────── -->
+    <section class="tabs-section">
+      <div class="tabs-bar" id="tabs-bar" role="tablist"></div>
+      <div class="tab-panes" id="tab-panes"></div>
+    </section>
+
+    <!-- ── Footer ───────────────────────────────────────────────────────────── -->
+    <footer class="footer">
+      <p id="footer-copy"></p>
+    </footer>
+
+  </main>
+  <!-- ── CI configuration modal ────────────────────────────────────────── -->
+  <div id="ci-config-modal" class="ci-modal-overlay" role="dialog" aria-modal="true" aria-label="CI run configuration" style="display:none">
+    <div class="ci-modal">
+      <button class="modal-close" id="ci-modal-close" aria-label="Close">&times;</button>
+      <h3>Trigger monitoring CI run</h3>
+      <p class="ci-modal-intro">This will trigger the <code>run-monitoring.yml</code> workflow on your self-hosted runner, run all backtests, and redeploy to GitHub Pages.</p>
+      <div class="ci-form">
+        <label class="ci-label" for="ci-repo-input">Source repository <span class="ci-label-hint">(owner/repo)</span></label>
+        <input type="text" id="ci-repo-input" class="ci-input" placeholder="e.g. leweex95/tradehub" autocomplete="off" spellcheck="false">
+        <label class="ci-label" for="ci-pat-input">GitHub Personal Access Token <span class="ci-label-hint">(workflow scope)</span></label>
+        <input type="password" id="ci-pat-input" class="ci-input" placeholder="ghp_..." autocomplete="off" spellcheck="false">
+        <label class="ci-remember">
+          <input type="checkbox" id="ci-remember-check" checked>
+          Remember in localStorage (only stored in your browser)
+        </label>
+      </div>
+      <div class="ci-modal-actions">
+        <button class="ci-cancel-btn" id="ci-modal-cancel">Cancel</button>
+        <button class="ci-confirm-btn" id="ci-modal-run">&#9654; Trigger run</button>
+      </div>
+      <p class="ci-modal-note">&#128274; Your PAT is only sent to <strong>api.github.com</strong> over HTTPS. It is never sent to any third-party server.</p>
+    </div>
+  </div>
+
+  <!-- ── Trade visualization modal ───────────────────────────────────────── -->
+  <div id="trade-modal" class="trade-modal-overlay" role="dialog" aria-modal="true" aria-label="Trade detail">
+    <div class="trade-modal">
+      <button class="modal-close" id="modal-close-btn" aria-label="Close">&times;</button>
+      <div class="modal-header">
+        <h3 id="modal-title"></h3>
+        <div class="modal-chips" id="modal-chips"></div>
+      </div>
+      <div id="modal-chart" class="modal-chart"></div>
+      <div class="modal-stats" id="modal-stats"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

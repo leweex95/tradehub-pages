@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-04-05T17:52:43Z",
+  "suite": {
+    "id": "full-history-monitor",
+    "public_title": "TradeHub Full-History Monitoring",
+    "description": "Full-history benchmark suite for long-horizon strategy performance tracking. Window is fixed to 2024-01-01..2026-04-01."
+  },
+  "reference": {},
+  "history_meta": {
+    "real_run_count": 0,
+    "first_run_date": null,
+    "last_run_date": null
+  },
+  "benchmarks": [],
+  "runs": []
+}
