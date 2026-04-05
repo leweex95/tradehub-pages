@@ -17,6 +17,12 @@ const state = {
 // Store for benchmark trades (keyed by benchmarkId_runIdx) — used by modal
 const _benchmarkTrades = {};
 
+// CI GitHub integration — PAT and repo stored in localStorage
+const GH_CI_PAT_KEY  = "tradehub-ci-pat";
+const GH_CI_REPO_KEY = "tradehub-ci-repo";
+const GH_CI_WORKFLOW = "run-monitoring.yml";
+const _ci = { polling: null, triggeredAt: null };
+
 // Apply theme immediately — HTML already has data-theme="dark" as safe fallback
 document.documentElement.dataset.theme = state.theme;
 
@@ -100,6 +106,42 @@ function benchmarkHasAlert(b) {
   return hasConsecutiveFingerprintChange(b.id) || hasConsecutivePnlDrift(b.id);
 }
 
+/** Computes trading KPIs from an array of trade records. Returns null if no trades. */
+function computeTradingKPIs(trades) {
+  if (!trades.length) return null;
+  const pnls   = trades.map(t => t.pnl_net ?? 0);
+  const wins   = trades.filter(t => (t.pnl_net ?? 0) > 0);
+  const losses = trades.filter(t => (t.pnl_net ?? 0) <= 0);
+  const grossWin  = wins.reduce((a, t) => a + (t.pnl_net ?? 0), 0);
+  const grossLoss = Math.abs(losses.reduce((a, t) => a + (t.pnl_net ?? 0), 0));
+  const avgWin  = wins.length  ? grossWin  / wins.length  : 0;
+  const avgLoss = losses.length ? grossLoss / losses.length : 0;
+  const best  = Math.max(...pnls);
+  const worst = Math.min(...pnls);
+  const barsArr = trades.map(t => Number(t.bars_held ?? 0)).filter(v => v > 0);
+  const avgBars = barsArr.length ? barsArr.reduce((a, v) => a + v, 0) / barsArr.length : 0;
+  const tpCount = trades.filter(t => t.exit_reason === "tp").length;
+  const slCount = trades.filter(t => t.exit_reason === "sl").length;
+  // Max drawdown from equity curve sorted ascending by entry_time
+  const sortedForDD = [...trades].sort((a, b) => String(a.entry_time).localeCompare(String(b.entry_time)));
+  let peak = 0, maxDD = 0, cum = 0;
+  for (const t of sortedForDD) {
+    cum += t.pnl_net ?? 0;
+    if (cum > peak) peak = cum;
+    const dd = peak - cum;
+    if (dd > maxDD) maxDD = dd;
+  }
+  return {
+    winRate:      wins.length / trades.length,
+    grossWin, grossLoss,
+    profitFactor: grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? Infinity : 0,
+    avgWin, avgLoss, best, worst, maxDD, avgBars,
+    tpCount, slCount,
+    tpRate: tpCount / trades.length,
+    slRate:  slCount / trades.length,
+  };
+}
+
 // Groups benchmarks by their base nickname (strip trailing _YYYY_MM or _YYYY etc.)
 function strategyNicknameOf(benchmark) {
   const id = benchmark?.id ?? "";
@@ -136,25 +178,54 @@ function plot(id, traces, extra = {}, config = {}) {
 }
 
 // ── Fetch & boot ──────────────────────────────────────────────────────────────
-fetch("monitoring-history.json").then(r => r.json()).then(monData => {
-  state.history = monData;
-  const stratGroups = groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []);
-  state.activeTab = stratGroups[0]?.nickname ?? null;
-  boot(stratGroups);
-}).catch(err => {
-  document.body.innerHTML = `<main class="page"><div class="panel" style="padding:32px"><p class="empty-state">Failed to load dashboard data: ${esc(String(err))}</p></div></main>`;
-});
+// ── Data loading (initial + refresh) ─────────────────────────────────────────
+function loadDashboardData({ showSpinner = false } = {}) {
+  const refreshBtn = document.getElementById("refresh-btn");
+  if (showSpinner && refreshBtn) {
+    refreshBtn.disabled = true;
+    refreshBtn.textContent = "Refreshing\u2026";
+    refreshBtn.classList.add("refreshing");
+  }
+  // Cache-bust so the browser always fetches the latest JSON
+  return fetch("monitoring-history.json?v=" + Date.now())
+    .then(r => r.json())
+    .then(monData => {
+      state.history = monData;
+      const stratGroups = groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []);
+      if (!state.activeTab) state.activeTab = stratGroups[0]?.nickname ?? null;
+      boot(stratGroups);
+    })
+    .catch(err => {
+      if (!showSpinner) {
+        document.body.innerHTML = `<main class="page"><div class="panel" style="padding:32px"><p class="empty-state">Failed to load dashboard data: ${esc(String(err))}</p></div></main>`;
+      }
+    })
+    .finally(() => {
+      if (refreshBtn) {
+        refreshBtn.disabled = false;
+        refreshBtn.textContent = "\u21bb Refresh data";
+        refreshBtn.classList.remove("refreshing");
+      }
+    });
+}
 
-// ── Theme toggle ──────────────────────────────────────────────────────────────
+loadDashboardData();
+
+// ── Theme toggle & refresh button ─────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
-  const btn = document.getElementById("theme-toggle");
-  if (!btn) return;
-  btn.addEventListener("click", () => {
-    state.theme = state.theme === "dark" ? "light" : "dark";
-    localStorage.setItem(THEME_KEY, state.theme);
-    document.documentElement.dataset.theme = state.theme;
-    renderCharts();   // redraw Plotly after palette change
-  });
+  const themeBtn = document.getElementById("theme-toggle");
+  if (themeBtn) {
+    themeBtn.addEventListener("click", () => {
+      state.theme = state.theme === "dark" ? "light" : "dark";
+      localStorage.setItem(THEME_KEY, state.theme);
+      document.documentElement.dataset.theme = state.theme;
+      renderCharts();   // redraw Plotly after palette change
+    });
+  }
+  const refreshBtn = document.getElementById("refresh-btn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => loadDashboardData({ showSpinner: true }));
+  }
 });
 
 window.addEventListener("resize", debounce(renderCharts, 120));
@@ -233,7 +304,7 @@ function renderStratFilter(stratGroups) {
       state.stratFilter = btn.dataset.strat || null;
       renderStratFilter(stratGroups);
       renderAggCharts(stratGroups);
-      // Sync the in-depth strategy tab
+      // Sync the in-depth strategy tab without forcing a scroll
       if (state.stratFilter) {
         state.activeTab = state.stratFilter;
         document.querySelectorAll(".tab-btn").forEach(b =>
@@ -241,7 +312,7 @@ function renderStratFilter(stratGroups) {
         document.querySelectorAll(".tab-pane").forEach(p =>
           p.classList.toggle("active", p.id === `pane-${state.stratFilter}`));
         renderTabPane(state.stratFilter, stratGroups);
-        document.getElementById("tabs-bar")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        // No scrollIntoView — user stays at their current scroll position
       }
     });
   });
@@ -272,16 +343,17 @@ function renderAggCharts(stratGroups) {
         marker: { color: colour, opacity: 0.85 },
         hovertemplate: `<b>${esc(sym)}</b><br>%{x}: %{y:$,.2f}<extra></extra>` };
     });
+    // Fix: use full `dates` array for all traces so categories share the same
+    // chronological order regardless of which runs have data for each symbol.
     const rtTraces = symbols.map((sym, i) => {
       const colour = cssVar(PALETTE[i % PALETTE.length]);
-      const xs = [], ys = [];
-      for (const run of runs) {
+      const ys = runs.map(run => {
         const v = (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname)
           .flatMap(b => b.symbols ?? []).filter(s => s.symbol === sym)
           .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0);
-        if (v > 0) { xs.push(run.date); ys.push(v); }
-      }
-      return { type: "scatter", mode: "lines+markers", name: sym, x: xs, y: ys,
+        return v > 0 ? v : null;  // null = gap; avoids out-of-order categories
+      });
+      return { type: "scatter", mode: "lines+markers", name: sym, x: dates, y: ys,
         line: { color: colour, width: 2 }, marker: { color: colour, size: 5 },
         hovertemplate: `<b>${esc(sym)}</b><br>%{x}: %{y:.2f}s<extra></extra>` };
     });
@@ -293,17 +365,20 @@ function renderAggCharts(stratGroups) {
     return;
   }
 
-  // Unfiltered view: one trace per strategy
+  // Unfiltered view: one trace per strategy.
+  // Fix: use full `dates` array for all traces so every trace shares the same
+  // category list in chronological order, preventing earlier dates from being
+  // appended at the end when a strategy first appears in a later run.
+  const dates = runs.map(r => r.date);
   const rtTraces = stratGroups.map((grp, i) => {
     const colour = cssVar(PALETTE[i % PALETTE.length]);
-    const xs = [], ys = [];
-    for (const run of runs) {
+    const ys = runs.map(run => {
       const sum = (run.benchmarks ?? [])
         .filter(b => strategyNicknameOf(b) === grp.nickname)
         .reduce((acc, b) => acc + (b.summary?.elapsed_sec ?? 0), 0);
-      if (sum > 0) { xs.push(run.date); ys.push(sum); }
-    }
-    return { type: "scatter", mode: "lines+markers", name: grp.public_name, x: xs, y: ys,
+      return sum > 0 ? sum : null;  // null = gap in line; keeps x-axis ordered
+    });
+    return { type: "scatter", mode: "lines+markers", name: grp.public_name, x: dates, y: ys,
       line: { color: colour, width: 2.5 }, marker: { color: colour, size: 6 },
       hovertemplate: `<b>${esc(grp.public_name)}</b><br>%{x}: %{y:.2f}s<extra></extra>` };
   });
@@ -325,6 +400,7 @@ function renderAggCharts(stratGroups) {
   });
   plot("agg-pnl-chart", pnlTraces, { barmode: "group", xaxis: { type: "category" }, yaxis: { title: "USD" } });
   document.getElementById("agg-pnl-note").textContent = "Aggregate net PnL across all monthly benchmarks per strategy per run.";
+  renderAggEquityCurve(stratGroups);
 }
 
 function renderAggLegend(stratGroups) {
@@ -334,6 +410,121 @@ function renderAggLegend(stratGroups) {
     const colour = cssVar(PALETTE[i % PALETTE.length]);
     return `<span class="legend-chip"><span class="legend-dot" style="background:${colour}"></span>${esc(grp.public_name)}</span>`;
   }).join("");
+}
+
+// ── Aggregate equity curve ─────────────────────────────────────────────────────
+function renderAggEquityCurve(stratGroups) {
+  const wrap = document.getElementById("agg-equity-wrap");
+  if (!wrap) return;
+  const latestRun = getLatestRun();
+  if (!latestRun) { wrap.style.display = "none"; return; }
+
+  const activeSym = state.stratFilter ? (state.tabSymFilter[state.stratFilter] ?? null) : null;
+
+  if (state.stratFilter) {
+    // Filtered view: equity curve for the selected strategy
+    const grp = stratGroups.find(g => g.nickname === state.stratFilter);
+    if (!grp) { wrap.style.display = "none"; return; }
+    const allTrades = [];
+    for (const b of (latestRun.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname)) {
+      for (const sym of (b.symbols ?? [])) {
+        if (activeSym && sym.symbol !== activeSym) continue;
+        for (const t of (sym.trades ?? [])) allTrades.push({ ...t, _sym: sym.symbol });
+      }
+    }
+    if (!allTrades.length) { wrap.style.display = "none"; return; }
+    wrap.style.display = "";
+    document.getElementById("agg-equity-eyebrow").textContent = grp.public_name + " \u2014 equity curve";
+    document.getElementById("agg-equity-title").textContent =
+      "Cumulative P\u0026L \u2014 " + allTrades.length + " trades" + (activeSym ? " \u2014 " + activeSym : "");
+    _plotAggEquity([{ trades: allTrades, label: grp.public_name,
+      color: cssVar(PALETTE[0]), stratKey: "strat_" + grp.nickname }]);
+  } else {
+    // Unfiltered view: one line per strategy (portfolio view)
+    const stratLines = stratGroups.map((grp, i) => {
+      const trades = [];
+      for (const b of (latestRun.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname))
+        for (const sym of (b.symbols ?? []))
+          for (const t of (sym.trades ?? [])) trades.push({ ...t, _sym: sym.symbol });
+      return { trades, label: grp.public_name, color: cssVar(PALETTE[i % PALETTE.length]), stratKey: "strat_" + grp.nickname };
+    }).filter(s => s.trades.length > 0);
+
+    if (!stratLines.length) { wrap.style.display = "none"; return; }
+    const totalTrades = stratLines.reduce((a, s) => a + s.trades.length, 0);
+    wrap.style.display = "";
+    document.getElementById("agg-equity-eyebrow").textContent = "Portfolio equity";
+    document.getElementById("agg-equity-title").textContent =
+      "Cumulative P\u0026L \u2014 all strategies \u2014 " + totalTrades + " trades";
+    _plotAggEquity(stratLines);
+  }
+}
+
+function _plotAggEquity(stratLines) {
+  const chartEl = document.getElementById("agg-equity-chart");
+  if (!chartEl) return;
+
+  const traces = stratLines.map(({ trades, label, color, stratKey }) => {
+    const sortedAsc = [...trades].sort((a, b) => String(a.entry_time).localeCompare(String(b.entry_time)));
+    let cum = 0;
+    const xs = [], ys = [], customdata = [];
+    sortedAsc.forEach((t, i) => {
+      cum += t.pnl_net ?? 0;
+      xs.push(i + 1);
+      ys.push(+cum.toFixed(2));
+      customdata.push({ stratKey, tradeNumAsc: i, date: String(t.entry_time || "").slice(0, 16).replace("T", " ") });
+    });
+    return {
+      type: "scatter", mode: "lines+markers", name: label, x: xs, y: ys, customdata,
+      line: { color, width: 2 }, marker: { color, size: 5 },
+      hovertemplate: `<b>${esc(label)}</b><br>Trade %{x}<br>Cumul.: <b>%{y:$,.2f}</b><br>%{customdata.date}<extra></extra>`,
+    };
+  });
+
+  Plotly.react(chartEl, traces, {
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+    margin: { t: 10, r: 16, b: 44, l: 72 },
+    hovermode: "closest",
+    font: { color: cssVar("--ink-muted"), size: 11, family: "Inter, Segoe UI, sans-serif" },
+    legend: { orientation: "h", x: 0, y: 1.15, font: { color: cssVar("--ink-muted"), size: 11 } },
+    xaxis: { title: { text: "Trade #", font: { size: 10, color: cssVar("--ink-muted") } },
+      gridcolor: cssVar("--plot-grid"), linecolor: cssVar("--plot-grid"),
+      tickfont: { size: 10, color: cssVar("--ink-muted") } },
+    yaxis: { tickformat: "$,.0f", gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"),
+      tickfont: { size: 10, color: cssVar("--ink-muted") } },
+    shapes: [{ type: "line", x0: 0, x1: 1, xref: "paper", y0: 0, y1: 0,
+      line: { color: "rgba(148,182,210,0.25)", width: 1, dash: "dot" } }],
+  }, { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["lasso2d","select2d","autoScale2d","toImage"] });
+
+  // Click: for single-strategy filtered view, navigate to trade row in the pane
+  chartEl.off("plotly_click");
+  chartEl.on("plotly_click", data => {
+    const pt = data.points?.[0];
+    if (!pt) return;
+    const { stratKey, tradeNumAsc } = pt.customdata;
+    const stratNick = stratKey.replace(/^strat_/, "");
+    // Ensure the correct tab is active
+    if (state.activeTab !== stratNick) {
+      state.activeTab = stratNick;
+      document.querySelectorAll(".tab-btn").forEach(b =>
+        b.classList.toggle("active", b.dataset.tab === stratNick));
+      document.querySelectorAll(".tab-pane").forEach(p =>
+        p.classList.toggle("active", p.id === `pane-${stratNick}`));
+      const sg = groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []);
+      renderTabPane(stratNick, sg);
+    }
+    // displayIdx in the descending-sorted trade table = N-1-tradeNumAsc
+    const allTrades = _benchmarkTrades[stratKey] ?? [];
+    if (allTrades.length) {
+      const displayIdx = allTrades.length - 1 - tradeNumAsc;
+      setTimeout(() => scrollToTradeRow(stratKey, displayIdx), 300);
+    } else {
+      // Pane not yet rendered: scroll to tab
+      setTimeout(() => {
+        const pane = document.getElementById(`pane-${stratNick}`);
+        if (pane) pane.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 300);
+    }
+  });
 }
 
 // ── Tabs ───────────────────────────────────────────────────────────────────────
@@ -417,7 +608,13 @@ function renderTabPane(nickname, stratGroups) {
       ${statCard("Alerts", alertCount || "✓", alertCount ? "vs previous run" : "no changes vs prev run", alertCount > 0 ? "var(--danger)" : "var(--good)")}
     </div>
 
+    <div id="strategy-kpis-${esc(nickname)}"></div>
+
+    <div id="equity-curve-${esc(nickname)}"></div>
+
     <div class="alerts-list" id="alerts-${esc(nickname)}"></div>
+
+    <div id="strategy-trades-${esc(nickname)}"></div>
 
     <div class="month-grid-wrap">
       <p class="eyebrow">Benchmark windows</p>
@@ -439,11 +636,327 @@ function renderTabPane(nickname, stratGroups) {
   });
 
   renderPaneAlerts(nickname, benchmarks);
+  renderStrategyTrades(nickname, benchmarks, activeSym);  // must run first — populates _benchmarkTrades
+  renderStrategyKPIs(nickname, `strat_${nickname}`);
+  renderEquityCurveForStrategy(nickname, `strat_${nickname}`);
   renderPaneMonths(nickname, benchmarks);
   const suiteMeta = (state.history?.benchmarks ?? []).find(b => b.id === (benchmarks[0]?.id ?? ""));
   renderPaneScope(nickname, suiteMeta ?? benchmarks[0] ?? null);
   renderPaneIntegrity(nickname, latestRun);
   renderPaneHistoryCharts(nickname, grp, activeSym);
+}
+
+// ── Per-strategy consolidated trade list with inline charts ──────────────────
+function renderStrategyTrades(nickname, benchmarks, activeSym) {
+  const el = document.getElementById(`strategy-trades-${nickname}`);
+  if (!el) return;
+
+  // Collect all trades across all benchmark windows (filtered by activeSym if set)
+  const allTrades = [];
+  for (const b of benchmarks) {
+    for (const row of (b.symbols ?? [])) {
+      if (activeSym && row.symbol !== activeSym) continue;
+      for (const t of (row.trades ?? [])) {
+        allTrades.push({ ...t, _sym: row.symbol, _window: b.window
+          ? `${b.window.start} → ${b.window.end}` : b.public_name });
+      }
+    }
+  }
+
+  if (!allTrades.length) { el.innerHTML = ""; return; }
+
+  // Sort by entry_time descending
+  allTrades.sort((a, b) => String(b.entry_time).localeCompare(String(a.entry_time)));
+
+  const stratKey = `strat_${nickname}`;
+  _benchmarkTrades[stratKey] = allTrades;
+
+  const pxFmt = v => { const n = Number(v); return isNaN(n) || n === 0 ? "—" : n < 10 ? n.toFixed(5) : n.toFixed(2); };
+
+  const rows = allTrades.map((t, i) => {
+    const pnl = t.pnl_net ?? 0;
+    const isWin = pnl > 0;
+    const dir = String(t.direction || "").toLowerCase();
+    const exitCls = t.exit_reason === "tp" ? "tp" : t.exit_reason === "sl" ? "sl" : "neutral";
+    return `
+      <tr class="trade-row strat-trade-row" data-tkey="${esc(stratKey)}" data-tidx="${i}">
+        <td><strong>${esc(t._sym)}</strong></td>
+        <td><span class="badge badge-${esc(dir)}">${esc(dir.toUpperCase())}</span></td>
+        <td>${esc(String(t.entry_time || "").replace("T", " ").slice(0, 19))}</td>
+        <td>${esc(String(t.exit_time  || "").replace("T", " ").slice(0, 19))}</td>
+        <td style="font-size:.8rem">${pxFmt(t.entry_price)}</td>
+        <td style="font-size:.8rem">${pxFmt(t.exit_price)}</td>
+        <td style="color:${isWin ? "var(--good)" : "var(--danger)"};font-weight:600">${isWin ? "+" : ""}${Number(pnl).toFixed(2)}</td>
+        <td>${esc(t.bars_held ?? "")}</td>
+        <td><span class="badge badge-${exitCls}">${esc(t.exit_reason || "—")}</span></td>
+        <td style="font-size:.75rem;color:var(--ink-muted)">${esc(t._window)}</td>
+      </tr>
+      <tr class="strat-trade-detail-row" id="strat-detail-${esc(stratKey)}-${i}" style="display:none">
+        <td colspan="10">
+          <div class="strat-trade-chart-wrap">
+            <div id="strat-chart-${esc(stratKey)}-${i}" style="height:220px"></div>
+            <div class="modal-stats" id="strat-stats-${esc(stratKey)}-${i}" style="margin-top:8px"></div>
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+
+  el.innerHTML = `
+    <div class="strategy-trades-section">
+      <p class="eyebrow" style="margin-bottom:8px">All ${allTrades.length} trades — click any row to expand chart</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Symbol</th><th>Dir</th><th>Entry</th><th>Exit</th>
+            <th>Entry px</th><th>Exit px</th><th>P&amp;L</th><th>Bars</th><th>Exit reason</th><th>Window</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  // Wire click-to-expand for each trade row
+  el.querySelectorAll(".strat-trade-row").forEach(row => {
+    row.addEventListener("click", () => {
+      const tkey = row.dataset.tkey;
+      const tidx = parseInt(row.dataset.tidx, 10);
+      const detailRow = document.getElementById(`strat-detail-${tkey}-${tidx}`);
+      if (!detailRow) return;
+      const isOpen = detailRow.style.display !== "none";
+      // Close all other open detail rows in this section
+      el.querySelectorAll(".strat-trade-detail-row").forEach(r => {
+        if (r !== detailRow) { r.style.display = "none"; }
+      });
+      el.querySelectorAll(".strat-trade-row").forEach(r => {
+        if (r !== row) r.classList.remove("expanded");
+      });
+      if (isOpen) {
+        detailRow.style.display = "none";
+        row.classList.remove("expanded");
+      } else {
+        detailRow.style.display = "";
+        row.classList.add("expanded");
+        renderInlineTradeChart(tkey, tidx);
+      }
+    });
+  });
+}
+
+// ── Strategy KPI cards ─────────────────────────────────────────────────────────
+function renderStrategyKPIs(nickname, stratKey) {
+  const el = document.getElementById(`strategy-kpis-${nickname}`);
+  if (!el) return;
+  const trades = _benchmarkTrades[stratKey] ?? [];
+  if (!trades.length) { el.innerHTML = ""; return; }
+  const kpis = computeTradingKPIs(trades);
+  if (!kpis) { el.innerHTML = ""; return; }
+
+  const pf = isFinite(kpis.profitFactor) ? kpis.profitFactor.toFixed(2) : "∞";
+  const pfCol = kpis.profitFactor > 1.5 ? "var(--good)" : kpis.profitFactor > 1 ? "var(--warn)" : "var(--danger)";
+  const wrCol = kpis.winRate > 0.5 ? "var(--good)" : kpis.winRate > 0.4 ? "var(--warn)" : "var(--danger)";
+  const kc = (label, value, color = "") =>
+    `<div class="kpi-mini-card">
+       <span class="kpi-mini-label">${esc(label)}</span>
+       <span class="kpi-mini-value" style="${color ? "color:"+color : ""}">${esc(String(value))}</span>
+     </div>`;
+
+  el.innerHTML = `
+    <div class="strategy-kpis-section">
+      <p class="eyebrow" style="margin-bottom:10px">Trading statistics</p>
+      <div class="kpi-mini-grid">
+        ${kc("Profit factor",   pf,                                      pfCol)}
+        ${kc("Win rate",        fmt(kpis.winRate * 100, 1) + "%",        wrCol)}
+        ${kc("Avg win",         "+" + kpis.avgWin.toFixed(2) + " USD",  "var(--good)")}
+        ${kc("Avg loss",        "\u2212" + kpis.avgLoss.toFixed(2) + " USD", "var(--danger)")}
+        ${kc("Best trade",      "+" + kpis.best.toFixed(2) + " USD",    "var(--good)")}
+        ${kc("Worst trade",     kpis.worst.toFixed(2) + " USD",         "var(--danger)")}
+        ${kc("Max drawdown",    "\u2212" + kpis.maxDD.toFixed(2) + " USD",  "var(--danger)")}
+        ${kc("TP exits",        fmt(kpis.tpRate * 100, 1) + "%",        "var(--good)")}
+        ${kc("SL exits",        fmt(kpis.slRate * 100, 1) + "%",        "var(--danger)")}
+        ${kc("Avg hold (bars)", fmt(kpis.avgBars, 1),                   "")}
+      </div>
+    </div>`;
+}
+
+// ── Per-strategy equity curve ─────────────────────────────────────────────────
+function renderEquityCurveForStrategy(nickname, stratKey) {
+  const el = document.getElementById(`equity-curve-${nickname}`);
+  if (!el) return;
+  // trades are stored in descending display order (data-tidx 0 = newest trade)
+  const trades = _benchmarkTrades[stratKey] ?? [];
+  if (!trades.length) { el.innerHTML = ""; return; }
+
+  // Sort ascending by entry_time for the curve; keep original display index (data-tidx) for linking
+  const sorted = trades
+    .map((trade, displayIdx) => ({ trade, displayIdx }))
+    .sort((a, b) => String(a.trade.entry_time).localeCompare(String(b.trade.entry_time)));
+
+  let cumPnl = 0;
+  const xs = [], ys = [], customdata = [];
+  for (let i = 0; i < sorted.length; i++) {
+    const { trade, displayIdx } = sorted[i];
+    cumPnl += trade.pnl_net ?? 0;
+    xs.push(i + 1);
+    ys.push(+cumPnl.toFixed(2));
+    customdata.push([displayIdx, String(trade.entry_time || "").slice(0, 16).replace("T", " ")]);
+  }
+
+  const endColor   = cumPnl >= 0 ? "#6fd98f" : "#ff7b61";
+  const dotColors  = ys.map((v, i) => (i === 0 || v >= ys[i - 1]) ? "#6fd98f" : "#ff7b61");
+
+  el.innerHTML = `
+    <div class="equity-curve-section">
+      <p class="eyebrow" style="margin-bottom:8px">Equity curve \u2014 click a dot to jump to that trade below</p>
+      <div id="eq-plot-${esc(nickname)}" style="height:200px"></div>
+    </div>`;
+
+  const chartEl = document.getElementById(`eq-plot-${nickname}`);
+  if (!chartEl) return;
+
+  const trace = {
+    type: "scatter", mode: "lines+markers",
+    x: xs, y: ys, customdata,
+    line:   { color: endColor, width: 2 },
+    marker: { color: dotColors, size: 6, line: { width: 1, color: "rgba(0,0,0,0.2)" } },
+    hovertemplate: "<b>Trade #%{x}</b><br>Cumul. P&L: <b>%{y:$,.2f}</b><br>%{customdata[1]}<extra></extra>",
+    showlegend: false,
+  };
+
+  Plotly.react(chartEl, [trace], {
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+    margin: { t: 8, r: 16, b: 44, l: 72 },
+    hovermode: "closest",
+    font: { color: cssVar("--ink-muted"), size: 11, family: "Inter, Segoe UI, sans-serif" },
+    xaxis: { title: { text: "Trade #", font: { size: 10 } }, gridcolor: cssVar("--plot-grid"),
+      linecolor: cssVar("--plot-grid"), tickfont: { size: 9, color: cssVar("--ink-muted") }, nticks: Math.min(xs.length, 12) },
+    yaxis: { tickformat: "$,.0f", gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"),
+      tickfont: { size: 10, color: cssVar("--ink-muted") } },
+    shapes: [{ type: "line", x0: 0, x1: 1, xref: "paper", y0: 0, y1: 0,
+      line: { color: "rgba(148,182,210,0.3)", width: 1, dash: "dot" } }],
+  }, { responsive: true, displaylogo: false, modeBarButtonsToRemove: ["lasso2d","select2d","autoScale2d","toImage"] });
+
+  chartEl.on("plotly_click", data => {
+    const pt = data.points?.[0];
+    if (!pt) return;
+    const [displayIdx] = pt.customdata;
+    scrollToTradeRow(stratKey, displayIdx);
+  });
+}
+
+/** Scroll to a trade row in the strategy trade table and open its inline chart. */
+function scrollToTradeRow(stratKey, displayIdx) {
+  const row = document.querySelector(`.strat-trade-row[data-tkey="${stratKey}"][data-tidx="${displayIdx}"]`);
+  if (!row) return;
+  row.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => {
+    const detailRow = document.getElementById(`strat-detail-${stratKey}-${displayIdx}`);
+    if (detailRow && detailRow.style.display === "none") row.click();
+    row.classList.add("equity-highlight");
+    setTimeout(() => row.classList.remove("equity-highlight"), 1500);
+  }, 400);
+}
+
+/** Renders an inline Plotly trade chart inside the expandable row. */
+function renderInlineTradeChart(tkey, tidx) {
+  const trade = _benchmarkTrades[tkey]?.[tidx];
+  if (!trade) return;
+  const chartId  = `strat-chart-${tkey}-${tidx}`;
+  const statsId  = `strat-stats-${tkey}-${tidx}`;
+  const chartEl  = document.getElementById(chartId);
+  const statsEl  = document.getElementById(statsId);
+  if (!chartEl) return;
+
+  const sym  = trade._sym || trade.symbol || trade.instrument || "—";
+  const dir  = String(trade.direction || "").toLowerCase();
+  const entX = String(trade.entry_time || "");
+  const extX = String(trade.exit_time  || "");
+  const entY = Number(trade.entry_price || 0);
+  const extY = Number(trade.exit_price  || 0);
+  const sl   = Number(trade.stop_loss  || trade.sl || 0);
+  const tp   = Number(trade.take_profit || trade.tp || 0);
+  const pnl  = Number(trade.pnl_net || trade.pnl_usd || 0);
+  const isWin = pnl > 0;
+
+  const pxFmt  = v => { const n = Number(v); return n < 10 ? n.toFixed(5) : n.toFixed(2); };
+  const dirCol  = dir === "buy" ? cssVar("--good") : cssVar("--warn");
+  const pnlCol  = isWin ? cssVar("--good") : cssVar("--danger");
+
+  const allY = [entY, extY, sl, tp].filter(v => v > 0);
+  const pad  = (Math.max(...allY) - Math.min(...allY)) * 0.15 || Math.abs(entY) * 0.001;
+  const yMin = Math.min(...allY) - pad;
+  const yMax = Math.max(...allY) + pad;
+
+  const traces = [
+    { type: "scatter", mode: "lines",
+      x: [entX, extX], y: [entY, extY],
+      line: { color: pnlCol, width: 2, dash: "dot" },
+      showlegend: false, hoverinfo: "skip" },
+    { type: "scatter", mode: "markers+text",
+      x: [entX], y: [entY],
+      marker: { symbol: dir === "buy" ? "triangle-up" : "triangle-down", size: 14, color: dirCol },
+      text: ["Entry"], textposition: "top center",
+      textfont: { color: dirCol, size: 10 },
+      showlegend: false,
+      hovertemplate: `<b>Entry</b><br>${pxFmt(entY)}<br>${esc(entX.replace("T"," ").slice(0,19))}<extra></extra>` },
+    { type: "scatter", mode: "markers+text",
+      x: [extX], y: [extY],
+      marker: { symbol: "x", size: 12, color: pnlCol, line: { width: 2 } },
+      text: ["Exit"], textposition: "top center",
+      textfont: { color: pnlCol, size: 10 },
+      showlegend: false,
+      hovertemplate: `<b>Exit</b><br>${pxFmt(extY)}<br>${esc(extX.replace("T"," ").slice(0,19))}<extra></extra>` },
+  ];
+
+  const shapes = [], annotations = [];
+  if (sl > 0) {
+    shapes.push({ type: "line", x0: entX, x1: extX, y0: sl, y1: sl,
+      line: { color: "rgba(255,123,97,0.65)", width: 1.5, dash: "dash" } });
+    annotations.push({ x: extX, y: sl, text: `SL ${pxFmt(sl)}`,
+      showarrow: false, xanchor: "right", font: { size: 9, color: "rgba(255,123,97,0.85)" } });
+  }
+  if (tp > 0) {
+    shapes.push({ type: "line", x0: entX, x1: extX, y0: tp, y1: tp,
+      line: { color: "rgba(111,217,143,0.65)", width: 1.5, dash: "dash" } });
+    annotations.push({ x: extX, y: tp, text: `TP ${pxFmt(tp)}`,
+      showarrow: false, xanchor: "right", font: { size: 9, color: "rgba(111,217,143,0.85)" } });
+  }
+
+  Plotly.react(chartEl, traces, {
+    paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+    margin: { t: 12, r: 80, b: 48, l: 60 },
+    hovermode: "closest",
+    font: { color: cssVar("--ink-muted"), size: 11, family: "Inter, Segoe UI, sans-serif" },
+    xaxis: { type: "date", tickformat: "%Y-%m-%d %H:%M", tickangle: -20,
+      gridcolor: cssVar("--plot-grid"), linecolor: cssVar("--plot-grid"),
+      tickfont: { color: cssVar("--ink-muted"), size: 10 },
+      // Drop non-working days so weekends don't create empty gaps
+      rangebreaks: [{ bounds: ["sat", "mon"] }] },
+    yaxis: { tickformat: entY < 10 ? ".5f" : ".2f",
+      gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"),
+      tickfont: { color: cssVar("--ink-muted"), size: 10 },
+      range: [yMin, yMax] },
+    shapes, annotations,
+  }, { responsive: true, displaylogo: false,
+    modeBarButtonsToRemove: ["lasso2d","select2d","autoScale2d","toImage"] });
+
+  if (statsEl) {
+    const msc = (label, val, color) =>
+      `<div class="modal-stat-card">
+         <span class="modal-stat-label">${esc(label)}</span>
+         <span class="modal-stat-value" style="${color ? "color:"+color : ""}">${esc(String(val))}</span>
+       </div>`;
+    statsEl.innerHTML = [
+      msc("Symbol",      sym, ""),
+      msc("Direction",   dir.toUpperCase(), dirCol),
+      msc("Entry price", pxFmt(entY), ""),
+      msc("Exit price",  pxFmt(extY), ""),
+      sl > 0 ? msc("SL",  pxFmt(sl),  "var(--danger)") : "",
+      tp > 0 ? msc("TP",  pxFmt(tp),  "var(--good)")   : "",
+      msc("P&L",         (pnl >= 0 ? "+" : "") + pnl.toFixed(2) + " USD", pnlCol),
+      msc("Bars held",   trade.bars_held ?? "—", ""),
+      msc("Exit",        trade.exit_reason || "—", ""),
+    ].filter(Boolean).join("");
+  }
 }
 
 // ── Per-strategy history charts ───────────────────────────────────────────────
@@ -468,21 +981,21 @@ function renderPaneHistoryCharts(nickname, grp, activeSym) {
 
   if (activeSym) {
     const colour = cssVar(PALETTE[0]);
-    const pnlXs = [], pnlYs = [], rtXs = [], rtYs = [];
-    for (const run of runs) {
-      const pv = (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
+    // Include all dates; use null where no data exists so category order is preserved
+    const pnlYs = runs.map(run =>
+      (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
         .flatMap(b => b.symbols ?? []).filter(s => s.symbol === activeSym)
-        .reduce((a, s) => a + (s.summary?.net_pnl_dollars ?? 0), 0);
-      pnlXs.push(run.date); pnlYs.push(pv);
+        .reduce((a, s) => a + (s.summary?.net_pnl_dollars ?? 0), 0));
+    const rtYs = runs.map(run => {
       const rv = (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
         .flatMap(b => b.symbols ?? []).filter(s => s.symbol === activeSym)
         .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0);
-      if (rv > 0) { rtXs.push(run.date); rtYs.push(rv); }
-    }
-    plot(`pane-pnl-${nickname}`, [{ type:"bar", name: activeSym, x: pnlXs, y: pnlYs,
+      return rv > 0 ? rv : null;
+    });
+    plot(`pane-pnl-${nickname}`, [{ type:"bar", name: activeSym, x: dates, y: pnlYs,
       marker: { color: pnlYs.map(v => v >= 0 ? "rgba(111,217,143,0.85)" : "rgba(255,123,97,0.85)") } }],
       { xaxis: { type: "category" }, yaxis: { title: "USD" }, margin: { t:6, r:8, b:36, l:52 } });
-    plot(`pane-rt-${nickname}`, [{ type:"scatter", mode:"lines+markers", name: activeSym, x: rtXs, y: rtYs,
+    plot(`pane-rt-${nickname}`, [{ type:"scatter", mode:"lines+markers", name: activeSym, x: dates, y: rtYs,
       line: { color: colour, width: 2 }, marker: { size: 5, color: colour } }],
       { xaxis: { type: "category" }, yaxis: { title: "Seconds" }, margin: { t:6, r:8, b:36, l:52 } });
   } else {
@@ -499,16 +1012,16 @@ function renderPaneHistoryCharts(nickname, grp, activeSym) {
           .reduce((a, s) => a + (s.summary?.net_pnl_dollars ?? 0), 0));
       return { type:"bar", name: sym, x: dates, y: ys, marker: { color: colour, opacity: 0.85 } };
     });
+    // Fix: use full `dates` array for all rt traces to preserve category order
     const rtTraces = symbols.map((sym, i) => {
       const colour = cssVar(PALETTE[i % PALETTE.length]);
-      const xs = [], ys = [];
-      for (const run of runs) {
+      const ys = runs.map(run => {
         const v = (run.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname)
           .flatMap(b => b.symbols ?? []).filter(s => s.symbol === sym)
           .reduce((a, s) => a + (s.summary?.elapsed_sec ?? 0), 0);
-        if (v > 0) { xs.push(run.date); ys.push(v); }
-      }
-      return { type:"scatter", mode:"lines+markers", name: sym, x: xs, y: ys,
+        return v > 0 ? v : null;
+      });
+      return { type:"scatter", mode:"lines+markers", name: sym, x: dates, y: ys,
         line: { color: colour, width: 1.5 }, marker: { size: 4, color: colour } };
     });
     plot(`pane-pnl-${nickname}`, pnlTraces, { barmode: "stack", xaxis: { type: "category" }, yaxis: { title: "USD" }, margin: { t:6, r:8, b:36, l:52 } });
@@ -831,7 +1344,9 @@ function openTradeModal(trade) {
     font: { color: cssVar("--ink-muted"), size: 12, family: "Inter, Segoe UI, sans-serif" },
     xaxis: { type: "date", tickformat: "%Y-%m-%d %H:%M", tickangle: -25,
       gridcolor: cssVar("--plot-grid"), linecolor: cssVar("--plot-grid"),
-      tickfont: { color: cssVar("--ink-muted"), size: 10 } },
+      tickfont: { color: cssVar("--ink-muted"), size: 10 },
+      // Hide weekend gaps so there are no empty spans in the chart
+      rangebreaks: [{ bounds: ["sat", "mon"] }] },
     yaxis: { tickformat: entY < 10 ? ".5f" : ".2f",
       gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"),
       tickfont: { color: cssVar("--ink-muted"), size: 10 },
@@ -885,13 +1400,167 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeTradeModal(); });
 
-// Event delegation for all .trade-row clicks (monitoring + any future tables)
+// Event delegation for benchmark trade-row clicks → opens modal.
+// Skips .strat-trade-row which handles expansion inline via its own listener.
 document.addEventListener("click", e => {
   const row = e.target.closest(".trade-row");
-  if (!row) return;
+  if (!row || row.classList.contains("strat-trade-row")) return;
   const tkey = row.dataset.tkey;
   const tidx = parseInt(row.dataset.tidx, 10);
   if (tkey && !isNaN(tidx) && _benchmarkTrades[tkey]) {
     openTradeModal(_benchmarkTrades[tkey][tidx]);
+  }
+});
+
+// ── CI: trigger monitoring workflow via GitHub API ────────────────────────────
+function _getCiConfig() {
+  return {
+    pat:  localStorage.getItem(GH_CI_PAT_KEY)  || "",
+    repo: localStorage.getItem(GH_CI_REPO_KEY) || "",
+  };
+}
+
+function _saveCiConfig(pat, repo, remember) {
+  if (remember) {
+    localStorage.setItem(GH_CI_PAT_KEY,  pat);
+    localStorage.setItem(GH_CI_REPO_KEY, repo);
+  } else {
+    localStorage.removeItem(GH_CI_PAT_KEY);
+    localStorage.removeItem(GH_CI_REPO_KEY);
+  }
+}
+
+function _updateCiBtn(state, label) {
+  const btn = document.getElementById("ci-run-btn");
+  if (!btn) return;
+  btn.textContent = label;
+  btn.disabled = state === "running";
+  btn.className = "ci-run-btn" + (state === "running" ? " ci-running" : state === "success" ? " ci-success" : state === "failed" ? " ci-failed" : "");
+}
+
+async function _triggerCiWorkflow(pat, repo) {
+  const url = `https://api.github.com/repos/${repo}/actions/workflows/${GH_CI_WORKFLOW}/dispatches`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "Content-Type": "application/json", "X-GitHub-Api-Version": "2022-11-28" },
+    body: JSON.stringify({ ref: "master", inputs: { reason: "Dashboard manual trigger" } }),
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`GitHub API ${res.status}: ${body}`);
+  }
+}
+
+async function _pollCiCompletion(triggeredAt, pat, repo) {
+  // Poll /actions/runs to find the workflow run started after triggeredAt
+  const maxAttempts = 36;  // 36 × 10s = 6 min timeout
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await delay(attempt === 0 ? 5000 : 10000);
+    try {
+      const url = `https://api.github.com/repos/${repo}/actions/runs?per_page=5&event=workflow_dispatch`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${pat}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const run = (data.workflow_runs ?? []).find(r => new Date(r.created_at) >= triggeredAt);
+      if (!run) continue;
+
+      const elapsed = Math.round((Date.now() - triggeredAt) / 1000);
+      _updateCiBtn("running", `\u23F3 CI running\u2026 ${elapsed}s`);
+
+      if (run.status === "completed") {
+        return run.conclusion;   // "success" | "failure" etc.
+      }
+    } catch (_) { /* network error — keep polling */ }
+  }
+  return "timeout";
+}
+
+function _showCiModal() {
+  const modal = document.getElementById("ci-config-modal");
+  if (!modal) return;
+  const cfg = _getCiConfig();
+  const repoInput = document.getElementById("ci-repo-input");
+  const patInput  = document.getElementById("ci-pat-input");
+  if (repoInput && cfg.repo) repoInput.value = cfg.repo;
+  if (patInput  && cfg.pat)  patInput.value  = cfg.pat;
+  modal.style.display = "flex";
+
+  const closeModal = () => { modal.style.display = "none"; };
+
+  document.getElementById("ci-modal-close")?.addEventListener("click",  closeModal, { once: true });
+  document.getElementById("ci-modal-cancel")?.addEventListener("click", closeModal, { once: true });
+  modal.addEventListener("click", e => { if (e.target === modal) closeModal(); }, { once: true });
+
+  document.getElementById("ci-modal-run")?.addEventListener("click", async () => {
+    const repo = repoInput?.value.trim() ?? "";
+    const pat  = patInput?.value.trim() ?? "";
+    const remember = document.getElementById("ci-remember-check")?.checked ?? true;
+
+    if (!repo || !repo.includes("/")) {
+      repoInput?.focus();
+      repoInput?.setCustomValidity("Enter owner/repo");
+      repoInput?.reportValidity();
+      return;
+    }
+    if (!pat || !pat.startsWith("gh")) {
+      patInput?.focus();
+      patInput?.setCustomValidity("Enter a valid GitHub PAT");
+      patInput?.reportValidity();
+      return;
+    }
+
+    _saveCiConfig(pat, repo, remember);
+    closeModal();
+
+    _updateCiBtn("running", "\u23F3 Triggering\u2026");
+    const triggeredAt = new Date(Date.now() - 2000); // small buffer for clock skew
+
+    try {
+      await _triggerCiWorkflow(pat, repo);
+    } catch (err) {
+      _updateCiBtn("failed", "\u2717 Trigger failed");
+      console.error("CI trigger error:", err);
+      setTimeout(() => _updateCiBtn("", "\u25BA Run backtests"), 5000);
+      return;
+    }
+
+    _ci.triggeredAt = triggeredAt;
+    _updateCiBtn("running", "\u23F3 CI running\u2026 0s");
+
+    const conclusion = await _pollCiCompletion(triggeredAt, pat, repo);
+
+    if (conclusion === "success") {
+      _updateCiBtn("success", "\u2713 Done \u2014 refreshing");
+      // Wait briefly then refresh dashboard data
+      setTimeout(() => loadDashboardData({ showSpinner: false }).finally(() => {
+        _updateCiBtn("", "\u25BA Run backtests");
+      }), 3000);
+    } else if (conclusion === "timeout") {
+      _updateCiBtn("failed", "\u231B Timed out \u2014 check GH Actions");
+      setTimeout(() => _updateCiBtn("", "\u25BA Run backtests"), 8000);
+    } else {
+      _updateCiBtn("failed", `\u2717 CI ${conclusion}`);
+      setTimeout(() => _updateCiBtn("", "\u25BA Run backtests"), 6000);
+    }
+  }, { once: true });
+}
+
+// Wire CI button
+document.addEventListener("DOMContentLoaded", () => {
+  const ciBtn = document.getElementById("ci-run-btn");
+  if (ciBtn) {
+    ciBtn.addEventListener("click", () => {
+      if (ciBtn.disabled) return;
+      const { pat, repo } = _getCiConfig();
+      // If both PAT and repo are already stored, confirm-then-trigger; else show modal
+      if (pat && repo) {
+        _showCiModal();   // still show modal so user can verify config
+      } else {
+        _showCiModal();
+      }
+    });
   }
 });

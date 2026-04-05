@@ -18,6 +18,12 @@
       </div>
       <div class="header-right">
         <div id="header-status" class="header-status"></div>
+        <button id="ci-run-btn" class="ci-run-btn" title="Trigger the monitoring backtest CI job and redeploy to GitHub Pages">
+          &#9654; Run backtests
+        </button>
+        <button id="refresh-btn" class="refresh-btn" title="Re-fetch monitoring-history.json and reload the dashboard">
+          &#x21bb; Refresh data
+        </button>
         <nav class="header-nav" aria-label="Site navigation">
           <a href="../../../index.html" class="header-nav-link">Home</a>
         </nav>
@@ -82,6 +88,17 @@
           <div class="plot" id="agg-pnl-chart"></div>
         </article>
       </div>
+      <!-- Aggregate / single-strategy equity curve -->
+      <article class="panel chart-card" id="agg-equity-wrap" style="display:none">
+        <div class="chart-card-head">
+          <div>
+            <p class="eyebrow" id="agg-equity-eyebrow">Portfolio equity</p>
+            <h3 id="agg-equity-title">Cumulative P&amp;L across all trades</h3>
+          </div>
+          <p class="chart-note" id="agg-equity-note">Click any dot to jump to that trade below</p>
+        </div>
+        <div id="agg-equity-chart" style="min-height:240px"></div>
+      </article>
     </section>
 
     <!-- ── Strategy tabs ────────────────────────────────────────────────────── -->
@@ -96,6 +113,30 @@
     </footer>
 
   </main>
+  <!-- ── CI configuration modal ────────────────────────────────────────── -->
+  <div id="ci-config-modal" class="ci-modal-overlay" role="dialog" aria-modal="true" aria-label="CI run configuration" style="display:none">
+    <div class="ci-modal">
+      <button class="modal-close" id="ci-modal-close" aria-label="Close">&times;</button>
+      <h3>Trigger monitoring CI run</h3>
+      <p class="ci-modal-intro">This will trigger the <code>run-monitoring.yml</code> workflow on your self-hosted runner, run all backtests, and redeploy to GitHub Pages.</p>
+      <div class="ci-form">
+        <label class="ci-label" for="ci-repo-input">Source repository <span class="ci-label-hint">(owner/repo)</span></label>
+        <input type="text" id="ci-repo-input" class="ci-input" placeholder="e.g. leweex95/tradehub" autocomplete="off" spellcheck="false">
+        <label class="ci-label" for="ci-pat-input">GitHub Personal Access Token <span class="ci-label-hint">(workflow scope)</span></label>
+        <input type="password" id="ci-pat-input" class="ci-input" placeholder="ghp_..." autocomplete="off" spellcheck="false">
+        <label class="ci-remember">
+          <input type="checkbox" id="ci-remember-check" checked>
+          Remember in localStorage (only stored in your browser)
+        </label>
+      </div>
+      <div class="ci-modal-actions">
+        <button class="ci-cancel-btn" id="ci-modal-cancel">Cancel</button>
+        <button class="ci-confirm-btn" id="ci-modal-run">&#9654; Trigger run</button>
+      </div>
+      <p class="ci-modal-note">&#128274; Your PAT is only sent to <strong>api.github.com</strong> over HTTPS. It is never sent to any third-party server.</p>
+    </div>
+  </div>
+
   <!-- ── Trade visualization modal ───────────────────────────────────────── -->
   <div id="trade-modal" class="trade-modal-overlay" role="dialog" aria-modal="true" aria-label="Trade detail">
     <div class="trade-modal">
