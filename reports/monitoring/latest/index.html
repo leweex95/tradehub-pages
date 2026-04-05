@@ -46,13 +46,9 @@
     <!-- ── Hero ────────────────────────────────────────────────────────────── -->
     <section class="hero panel">
       <div class="hero-text">
-        <p class="eyebrow">Long-term regression dashboard</p>
+        <p class="eyebrow" id="hero-eyebrow">TradeHub Monitoring</p>
         <h1>Strategy performance <em>over time</em></h1>
-        <p class="lede">
-          Daily fixed-scope backtests — runtime stability, profitability drift,
-          result fingerprints and input fingerprints. Public output exposes only
-          aggregates, hashes, dates, and symbol scope.
-        </p>
+        <p class="lede" id="hero-lede"></p>
       </div>
       <div class="hero-kpis" id="hero-kpis"></div>
     </section>
@@ -147,7 +143,13 @@
         <h3 id="modal-title"></h3>
         <div class="modal-chips" id="modal-chips"></div>
       </div>
-      <div id="modal-chart" class="modal-chart"></div>
+      <div class="modal-chart-wrap" style="display:flex;gap:8px;align-items:flex-start">
+        <div id="modal-chart" class="modal-chart" style="flex:1;min-width:0"></div>
+        <div class="candle-btns" id="modal-candle-btns" style="display:none;flex-direction:column;gap:6px;padding-top:8px">
+          <button class="candle-btn candle-btn-before" id="modal-candle-before" title="+100 earlier candles" style="font-size:0.8rem;padding:4px 8px">↑ +100</button>
+          <button class="candle-btn candle-btn-after"  id="modal-candle-after"  title="+100 later candles"  style="font-size:0.8rem;padding:4px 8px">↓ +100</button>
+        </div>
+      </div>
       <div class="modal-stats" id="modal-stats"></div>
     </div>
   </div>

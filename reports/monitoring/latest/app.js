@@ -10,12 +10,17 @@ const state = {
   history: null,
   activeTab: null,
   theme: localStorage.getItem(THEME_KEY) || "dark",
-  stratFilter: null,   // null = all; string = strategy nickname
+  // null/empty Set = show all strategies; populated Set = show only those nickname keys
+  stratFilterSet: new Set(),
   tabSymFilter: {},    // { nickname: symbol | null }
+  dateFilter: { from: null, to: null },  // ISO date strings "YYYY-MM-DD" or null
 };
 
 // Store for benchmark trades (keyed by benchmarkId_runIdx) — used by modal
 const _benchmarkTrades = {};
+
+// Per-chart candle state for +100 extend buttons: { candles, entryIdx, visibleBefore, visibleAfter }
+const _chartState = {};
 
 // CI GitHub integration — PAT and repo stored in localStorage
 const GH_CI_PAT_KEY  = "tradehub-ci-pat";
@@ -103,7 +108,10 @@ function hasConsecutivePnlDrift(benchmarkId, tol = 0.05) {
 
 /** True if there is any consecutive-run alert for benchmark b. */
 function benchmarkHasAlert(b) {
-  return hasConsecutiveFingerprintChange(b.id) || hasConsecutivePnlDrift(b.id);
+  // Fingerprint change where inputs were the same = true code regression
+  const hasTrueRegressionFingerprint = hasConsecutiveFingerprintChange(b.id) &&
+    !b.status?.input_changed_since_last_real_run;
+  return hasTrueRegressionFingerprint || hasConsecutivePnlDrift(b.id);
 }
 
 /** Computes trading KPIs from an array of trade records. Returns null if no trades. */
@@ -250,6 +258,12 @@ function renderCharts() {
 
 // ── Hero ──────────────────────────────────────────────────────────────────────
 function renderHero() {
+  const eyebrow = document.getElementById("hero-eyebrow");
+  const lede    = document.getElementById("hero-lede");
+  const suite   = state.history?.suite ?? {};
+  if (eyebrow) eyebrow.textContent = suite.public_title || "TradeHub Monitoring";
+  if (lede)    lede.textContent    = suite.description  || "";
+
   const kpis = document.getElementById("hero-kpis");
   if (!kpis) return;
   const latestRun = getLatestRun();
@@ -287,32 +301,43 @@ function renderHeaderStatus() {
   `;
 }
 
-// ── Strategy filter ───────────────────────────────────────────────────────────
+// ── Strategy filter (multi-select) ───────────────────────────────────────────
 function renderStratFilter(stratGroups) {
   const el = document.getElementById("strat-filter");
   if (!el) return;
-  const active = state.stratFilter;
+  const active = state.stratFilterSet;
+  const allActive = active.size === 0;
   const btns = [
-    `<button class="filter-btn${active === null ? " active" : ""}" data-strat="">All strategies</button>`,
-    ...stratGroups.map(g =>
-      `<button class="filter-btn${active === g.nickname ? " active" : ""}" data-strat="${esc(g.nickname)}">${esc(g.public_name)}</button>`
-    ),
+    `<button class="filter-btn${allActive ? " active" : ""}" data-strat="">All strategies</button>`,
+    ...stratGroups.map(g => {
+      const isActive = active.has(g.nickname);
+      return `<button class="filter-btn${isActive ? " active" : ""}" data-strat="${esc(g.nickname)}">${esc(g.public_name)}</button>`;
+    }),
   ].join("");
-  el.innerHTML = `<span class="filter-label">Filter:</span><div class="filter-btns">${btns}</div>`;
+  el.innerHTML = `<span class="filter-label">Filter by strategy:</span><div class="filter-btns">${btns}</div>`;
   el.querySelectorAll(".filter-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      state.stratFilter = btn.dataset.strat || null;
+      const nick = btn.dataset.strat;
+      if (!nick) {
+        // "All" — clear all selections
+        state.stratFilterSet = new Set();
+      } else if (state.stratFilterSet.has(nick)) {
+        state.stratFilterSet.delete(nick);
+      } else {
+        state.stratFilterSet.add(nick);
+      }
       renderStratFilter(stratGroups);
       renderAggCharts(stratGroups);
-      // Sync the in-depth strategy tab without forcing a scroll
-      if (state.stratFilter) {
-        state.activeTab = state.stratFilter;
+      renderAggLegend(stratGroups);
+      // When exactly one strategy is selected, auto-switch its tab
+      if (state.stratFilterSet.size === 1) {
+        const nick1 = [...state.stratFilterSet][0];
+        state.activeTab = nick1;
         document.querySelectorAll(".tab-btn").forEach(b =>
-          b.classList.toggle("active", b.dataset.tab === state.stratFilter));
+          b.classList.toggle("active", b.dataset.tab === nick1));
         document.querySelectorAll(".tab-pane").forEach(p =>
-          p.classList.toggle("active", p.id === `pane-${state.stratFilter}`));
-        renderTabPane(state.stratFilter, stratGroups);
-        // No scrollIntoView — user stays at their current scroll position
+          p.classList.toggle("active", p.id === `pane-${nick1}`));
+        renderTabPane(nick1, stratGroups);
       }
     });
   });
@@ -322,9 +347,10 @@ function renderStratFilter(stratGroups) {
 function renderAggCharts(stratGroups) {
   const runs = getDeduplicatedRuns();  // ← one entry per calendar date
 
-  if (state.stratFilter) {
-    // Filtered view: per-symbol stacked bars for selected strategy
-    const grp = stratGroups.find(g => g.nickname === state.stratFilter);
+  if (state.stratFilterSet.size === 1) {
+    // Single-strategy filtered view: per-symbol stacked bars
+    const nick = [...state.stratFilterSet][0];
+    const grp = stratGroups.find(g => g.nickname === nick);
     if (!grp) return;
     const symbolSet = new Set();
     for (const run of runs)
@@ -365,12 +391,16 @@ function renderAggCharts(stratGroups) {
     return;
   }
 
-  // Unfiltered view: one trace per strategy.
+  // Unfiltered / multi-select view: one trace per visible strategy.
+  // When stratFilterSet has entries (2+), only show selected ones.
+  const visibleGroups = state.stratFilterSet.size > 0
+    ? stratGroups.filter(g => state.stratFilterSet.has(g.nickname))
+    : stratGroups;
   // Fix: use full `dates` array for all traces so every trace shares the same
   // category list in chronological order, preventing earlier dates from being
   // appended at the end when a strategy first appears in a later run.
   const dates = runs.map(r => r.date);
-  const rtTraces = stratGroups.map((grp, i) => {
+  const rtTraces = visibleGroups.map((grp, i) => {
     const colour = cssVar(PALETTE[i % PALETTE.length]);
     const ys = runs.map(run => {
       const sum = (run.benchmarks ?? [])
@@ -385,7 +415,7 @@ function renderAggCharts(stratGroups) {
   plot("agg-runtime-chart", rtTraces, { xaxis: { type: "category" }, yaxis: { title: "Total seconds" } });
   document.getElementById("agg-runtime-note").textContent = "Sum of all benchmark runtimes per run date across each strategy.";
 
-  const pnlTraces = stratGroups.map((grp, i) => {
+  const pnlTraces = visibleGroups.map((grp, i) => {
     const colour = cssVar(PALETTE[i % PALETTE.length]);
     const xs = [], ys = [];
     for (const run of runs) {
@@ -400,13 +430,16 @@ function renderAggCharts(stratGroups) {
   });
   plot("agg-pnl-chart", pnlTraces, { barmode: "group", xaxis: { type: "category" }, yaxis: { title: "USD" } });
   document.getElementById("agg-pnl-note").textContent = "Aggregate net PnL across all monthly benchmarks per strategy per run.";
-  renderAggEquityCurve(stratGroups);
+  renderAggEquityCurve(visibleGroups);
 }
 
 function renderAggLegend(stratGroups) {
   const el = document.getElementById("agg-legend");
   if (!el) return;
-  el.innerHTML = stratGroups.map((grp, i) => {
+  const visibleGroups = state.stratFilterSet.size > 0
+    ? stratGroups.filter(g => state.stratFilterSet.has(g.nickname))
+    : stratGroups;
+  el.innerHTML = visibleGroups.map((grp, i) => {
     const colour = cssVar(PALETTE[i % PALETTE.length]);
     return `<span class="legend-chip"><span class="legend-dot" style="background:${colour}"></span>${esc(grp.public_name)}</span>`;
   }).join("");
@@ -419,11 +452,13 @@ function renderAggEquityCurve(stratGroups) {
   const latestRun = getLatestRun();
   if (!latestRun) { wrap.style.display = "none"; return; }
 
-  const activeSym = state.stratFilter ? (state.tabSymFilter[state.stratFilter] ?? null) : null;
+  const isSingleFilter = state.stratFilterSet.size === 1;
+  const filterNick = isSingleFilter ? [...state.stratFilterSet][0] : null;
+  const activeSym = filterNick ? (state.tabSymFilter[filterNick] ?? null) : null;
 
-  if (state.stratFilter) {
-    // Filtered view: equity curve for the selected strategy
-    const grp = stratGroups.find(g => g.nickname === state.stratFilter);
+  if (isSingleFilter) {
+    // Single-strategy filtered view: equity curve for the selected strategy
+    const grp = stratGroups.find(g => g.nickname === filterNick);
     if (!grp) { wrap.style.display = "none"; return; }
     const allTrades = [];
     for (const b of (latestRun.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname)) {
@@ -440,7 +475,7 @@ function renderAggEquityCurve(stratGroups) {
     _plotAggEquity([{ trades: allTrades, label: grp.public_name,
       color: cssVar(PALETTE[0]), stratKey: "strat_" + grp.nickname }]);
   } else {
-    // Unfiltered view: one line per strategy (portfolio view)
+    // Unfiltered / multi-select view: one line per visible strategy (portfolio view)
     const stratLines = stratGroups.map((grp, i) => {
       const trades = [];
       for (const b of (latestRun.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname))
@@ -469,14 +504,14 @@ function _plotAggEquity(stratLines) {
     const xs = [], ys = [], customdata = [];
     sortedAsc.forEach((t, i) => {
       cum += t.pnl_net ?? 0;
-      xs.push(i + 1);
+      xs.push(String(t.entry_time || "").replace(" ", "T").slice(0, 16));
       ys.push(+cum.toFixed(2));
       customdata.push({ stratKey, tradeNumAsc: i, date: String(t.entry_time || "").slice(0, 16).replace("T", " ") });
     });
     return {
       type: "scatter", mode: "lines+markers", name: label, x: xs, y: ys, customdata,
       line: { color, width: 2 }, marker: { color, size: 5 },
-      hovertemplate: `<b>${esc(label)}</b><br>Trade %{x}<br>Cumul.: <b>%{y:$,.2f}</b><br>%{customdata.date}<extra></extra>`,
+      hovertemplate: `<b>${esc(label)}</b><br>%{x}<br>Cumul.: <b>%{y:$,.2f}</b><extra></extra>`,
     };
   });
 
@@ -486,8 +521,8 @@ function _plotAggEquity(stratLines) {
     hovermode: "closest",
     font: { color: cssVar("--ink-muted"), size: 11, family: "Inter, Segoe UI, sans-serif" },
     legend: { orientation: "h", x: 0, y: 1.15, font: { color: cssVar("--ink-muted"), size: 11 } },
-    xaxis: { title: { text: "Trade #", font: { size: 10, color: cssVar("--ink-muted") } },
-      gridcolor: cssVar("--plot-grid"), linecolor: cssVar("--plot-grid"),
+    xaxis: { type: "date", title: { text: "Date", font: { size: 10, color: cssVar("--ink-muted") } },
+      tickformat: "%Y-%m-%d", gridcolor: cssVar("--plot-grid"), linecolor: cssVar("--plot-grid"),
       tickfont: { size: 10, color: cssVar("--ink-muted") } },
     yaxis: { tickformat: "$,.0f", gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"),
       tickfont: { size: 10, color: cssVar("--ink-muted") } },
@@ -535,14 +570,8 @@ function renderTabs(stratGroups) {
   if (!bar || !panes) return;
 
   bar.innerHTML = stratGroups.map(grp => {
-    const latestRun = getLatestRun();
-    const benchmarks = (latestRun?.benchmarks ?? []).filter(b => strategyNicknameOf(b) === grp.nickname);
-    const alertCount = benchmarks.filter(b => benchmarkHasAlert(b)).length;
-    const badge = alertCount > 0
-      ? `<span class="tab-badge">${alertCount}</span>`
-      : `<span class="tab-badge ok">✓</span>`;
     const active = grp.nickname === state.activeTab ? "active" : "";
-    return `<button class="tab-btn ${active}" role="tab" data-tab="${esc(grp.nickname)}">${esc(grp.public_name)}${badge}</button>`;
+    return `<button class="tab-btn ${active}" role="tab" data-tab="${esc(grp.nickname)}">${esc(grp.public_name)}</button>`;
   }).join("");
 
   panes.innerHTML = stratGroups.map(grp => {
@@ -572,9 +601,15 @@ function renderTabPane(nickname, stratGroups) {
   const latestRun = getLatestRun();
   const allBenchmarks = (latestRun?.benchmarks ?? []).filter(b => strategyNicknameOf(b) === nickname);
 
-  // Collect all unique symbols across all benchmarks for this strategy
+  // Collect all unique symbols and trade counts across all benchmarks for this strategy
   const symbolSet = new Set();
-  for (const b of allBenchmarks) for (const s of (b.symbols ?? [])) symbolSet.add(s.symbol);
+  const symTradeCount = {};
+  for (const b of allBenchmarks) {
+    for (const s of (b.symbols ?? [])) {
+      symbolSet.add(s.symbol);
+      symTradeCount[s.symbol] = (symTradeCount[s.symbol] || 0) + (s.trades?.length || s.summary?.trade_count || 0);
+    }
+  }
   const allSymbols = [...symbolSet].sort();
 
   // Respect symbol filter
@@ -583,30 +618,89 @@ function renderTabPane(nickname, stratGroups) {
     ? allBenchmarks.filter(b => (b.symbols ?? []).some(s => s.symbol === activeSym))
     : allBenchmarks;
 
-  const totalTrades  = benchmarks.reduce((a,b) => a + (b.summary?.trade_count ?? 0), 0);
-  const totalWins    = benchmarks.reduce((a,b) => a + (b.summary?.wins ?? 0), 0);
-  const totalPnl     = benchmarks.reduce((a,b) => a + (b.summary?.net_pnl_dollars ?? 0), 0);
-  const totalElapsed = benchmarks.reduce((a,b) => a + (b.summary?.elapsed_sec ?? 0), 0);
-  const winRate      = totalTrades > 0 ? (totalWins / totalTrades * 100) : 0;
-  const alertCount   = benchmarks.filter(b => benchmarkHasAlert(b)).length;
+  // Respect date filter
+  const df = state.dateFilter;
+  const dfFrom = df.from ? new Date(df.from) : null;
+  const dfTo   = df.to   ? new Date(df.to + "T23:59:59") : null;
+  function tradeInDateRange(t) {
+    if (!dfFrom && !dfTo) return true;
+    const dt = new Date(String(t.entry_time || "").replace("T", " "));
+    if (dfFrom && dt < dfFrom) return false;
+    if (dfTo   && dt > dfTo)   return false;
+    return true;
+  }
+
+  // Compute stats from individual trades (respects both sym and date filters)
+  let totalTrades = 0, totalWins = 0, totalPnl = 0, totalElapsed = 0;
+  for (const b of benchmarks) {
+    for (const sym of (b.symbols ?? [])) {
+      if (activeSym && sym.symbol !== activeSym) continue;
+      const trades = (sym.trades ?? []).filter(tradeInDateRange);
+      totalTrades += trades.length;
+      totalWins   += trades.filter(t => (t.pnl_net ?? 0) > 0).length;
+      totalPnl    += trades.reduce((a, t) => a + (t.pnl_net ?? 0), 0);
+    }
+    totalElapsed += b.summary?.elapsed_sec ?? 0;
+  }
+  const winRate = totalTrades > 0 ? (totalWins / totalTrades * 100) : 0;
+
+  // Date filter presets derived from all available trades
+  const allTradeDates = [];
+  for (const b of allBenchmarks)
+    for (const s of (b.symbols ?? []))
+      for (const t of (s.trades ?? []))
+        allTradeDates.push(String(t.entry_time || "").slice(0, 10));
+  allTradeDates.sort();
+  const latestTradeDate = allTradeDates[allTradeDates.length - 1] ?? "";
+  function presetDate(monthsBack) {
+    if (!latestTradeDate) return "";
+    const d = new Date(latestTradeDate); d.setMonth(d.getMonth() - monthsBack);
+    return d.toISOString().slice(0, 10);
+  }
+  const activePreset =
+    (!df.from && !df.to)                                          ? "all"
+    : (df.from === presetDate(1)  && !df.to)                     ? "1m"
+    : (df.from === presetDate(3)  && !df.to)                     ? "3m"
+    : (df.from === presetDate(6)  && !df.to)                     ? "6m"
+    : (df.from === presetDate(12) && !df.to)                     ? "1y"
+    : "custom";
 
   const symChips = allSymbols.length > 1 ? `
     <div class="symbol-filter">
       <span class="filter-label">Symbol:</span>
       <button class="filter-chip${activeSym === null ? " active" : ""}" data-sym="">All</button>
-      ${allSymbols.map(sym =>
-        `<button class="filter-chip${activeSym === sym ? " active" : ""}" data-sym="${esc(sym)}">${esc(sym)}</button>`
-      ).join("")}
+      ${allSymbols.map(sym => {
+        const cnt = symTradeCount[sym] || 0;
+        return `<button class="filter-chip${activeSym === sym ? " active" : ""}" data-sym="${esc(sym)}">${esc(sym)} (${cnt})</button>`;
+      }).join("")}
     </div>` : "";
+
+  const dateFilterBar = `
+    <div class="date-filter-bar">
+      <span class="filter-label">Date:</span>
+      <div class="filter-btns date-presets">
+        <button class="filter-btn${activePreset === "all" ? " active" : ""}" data-preset="all">All</button>
+        <button class="filter-btn${activePreset === "1m"  ? " active" : ""}" data-preset="1m">1 month</button>
+        <button class="filter-btn${activePreset === "3m"  ? " active" : ""}" data-preset="3m">3 months</button>
+        <button class="filter-btn${activePreset === "6m"  ? " active" : ""}" data-preset="6m">6 months</button>
+        <button class="filter-btn${activePreset === "1y"  ? " active" : ""}" data-preset="1y">1 year</button>
+      </div>
+      <div class="date-custom-inputs">
+        <input type="date" class="date-input" id="df-from-${esc(nickname)}" value="${df.from || ""}" max="${df.to || latestTradeDate}">
+        <span style="color:var(--ink-muted)">—</span>
+        <input type="date" class="date-input" id="df-to-${esc(nickname)}" value="${df.to || ""}" min="${df.from || ""}">
+        ${(df.from || df.to) ? `<button class="filter-btn date-clear-btn" title="Clear date filter" data-clear-date>✕</button>` : ""}
+      </div>
+    </div>`;
 
   pane.innerHTML = `
     ${symChips}
+    ${dateFilterBar}
     <div class="stat-row">
-      ${statCard("Total trades", totalTrades, "")}
+      ${statCard("Total trades", totalTrades, activeSym ? esc(activeSym) + " only" : "all symbols")}
       ${statCard("Win rate", fmt(winRate, 1) + "%", "across all months & symbols")}
       ${statCard("Net PnL", currency.format(totalPnl), "all months combined", totalPnl >= 0 ? "var(--good)" : "var(--danger)")}
       ${statCard("Runtime", fmt(totalElapsed, 1) + "s", "total across benchmarks")}
-      ${statCard("Alerts", alertCount || "✓", alertCount ? "vs previous run" : "no changes vs prev run", alertCount > 0 ? "var(--danger)" : "var(--good)")}
     </div>
 
     <div id="strategy-kpis-${esc(nickname)}"></div>
@@ -629,11 +723,40 @@ function renderTabPane(nickname, stratGroups) {
   `;
 
   // Wire symbol filter chip clicks
-  pane.querySelectorAll(".filter-chip").forEach(chip => {
+  pane.querySelectorAll(".filter-chip[data-sym]").forEach(chip => {
     chip.addEventListener("click", () => {
       state.tabSymFilter[nickname] = chip.dataset.sym || null;
       renderTabPane(nickname, stratGroups);
     });
+  });
+
+  // Wire date filter preset clicks
+  pane.querySelectorAll(".date-presets .filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const preset = btn.dataset.preset;
+      if (preset === "all") { state.dateFilter = { from: null, to: null }; }
+      else if (preset === "1m" ) { state.dateFilter = { from: presetDate(1),  to: null }; }
+      else if (preset === "3m" ) { state.dateFilter = { from: presetDate(3),  to: null }; }
+      else if (preset === "6m" ) { state.dateFilter = { from: presetDate(6),  to: null }; }
+      else if (preset === "1y" ) { state.dateFilter = { from: presetDate(12), to: null }; }
+      renderTabPane(nickname, stratGroups);
+    });
+  });
+
+  // Wire custom date inputs
+  const fromInput = pane.querySelector(`#df-from-${nickname}`);
+  const toInput   = pane.querySelector(`#df-to-${nickname}`);
+  if (fromInput) fromInput.addEventListener("change", () => {
+    state.dateFilter.from = fromInput.value || null;
+    renderTabPane(nickname, stratGroups);
+  });
+  if (toInput) toInput.addEventListener("change", () => {
+    state.dateFilter.to = toInput.value || null;
+    renderTabPane(nickname, stratGroups);
+  });
+  pane.querySelector("[data-clear-date]")?.addEventListener("click", () => {
+    state.dateFilter = { from: null, to: null };
+    renderTabPane(nickname, stratGroups);
   });
 
   renderPaneAlerts(nickname, benchmarks);
@@ -652,12 +775,19 @@ function renderStrategyTrades(nickname, benchmarks, activeSym) {
   const el = document.getElementById(`strategy-trades-${nickname}`);
   if (!el) return;
 
-  // Collect all trades across all benchmark windows (filtered by activeSym if set)
+  // Collect all trades across all benchmark windows (filtered by activeSym + dateFilter)
+  const dfFrom = state.dateFilter.from ? new Date(state.dateFilter.from) : null;
+  const dfTo   = state.dateFilter.to   ? new Date(state.dateFilter.to + "T23:59:59") : null;
   const allTrades = [];
   for (const b of benchmarks) {
     for (const row of (b.symbols ?? [])) {
       if (activeSym && row.symbol !== activeSym) continue;
       for (const t of (row.trades ?? [])) {
+        if (dfFrom || dfTo) {
+          const dt = new Date(String(t.entry_time || "").replace("T", " "));
+          if (dfFrom && dt < dfFrom) continue;
+          if (dfTo   && dt > dfTo)   continue;
+        }
         allTrades.push({ ...t, _sym: row.symbol, _window: b.window
           ? `${b.window.start} → ${b.window.end}` : b.public_name });
       }
@@ -694,10 +824,14 @@ function renderStrategyTrades(nickname, benchmarks, activeSym) {
       </tr>
       <tr class="strat-trade-detail-row" id="strat-detail-${esc(stratKey)}-${i}" style="display:none">
         <td colspan="10">
-          <div class="strat-trade-chart-wrap">
-            <div id="strat-chart-${esc(stratKey)}-${i}" style="height:220px"></div>
-            <div class="modal-stats" id="strat-stats-${esc(stratKey)}-${i}" style="margin-top:8px"></div>
+          <div class="strat-chart-wrap" style="display:flex;gap:8px;align-items:flex-start">
+            <div id="strat-chart-${esc(stratKey)}-${i}" style="height:220px;flex:1;min-width:0"></div>
+            <div class="candle-btns" style="display:flex;flex-direction:column;gap:6px;padding-top:8px">
+              <button class="candle-btn candle-btn-before" title="+100 earlier candles" style="font-size:0.8rem;padding:4px 8px">↑ +100</button>
+              <button class="candle-btn candle-btn-after"  title="+100 later candles"  style="font-size:0.8rem;padding:4px 8px">↓ +100</button>
+            </div>
           </div>
+          <div class="modal-stats" id="strat-stats-${esc(stratKey)}-${i}" style="margin-top:8px"></div>
         </td>
       </tr>`;
   }).join("");
@@ -797,7 +931,7 @@ function renderEquityCurveForStrategy(nickname, stratKey) {
   for (let i = 0; i < sorted.length; i++) {
     const { trade, displayIdx } = sorted[i];
     cumPnl += trade.pnl_net ?? 0;
-    xs.push(i + 1);
+    xs.push(String(trade.entry_time || "").replace(" ", "T").slice(0, 16));
     ys.push(+cumPnl.toFixed(2));
     customdata.push([displayIdx, String(trade.entry_time || "").slice(0, 16).replace("T", " ")]);
   }
@@ -819,7 +953,7 @@ function renderEquityCurveForStrategy(nickname, stratKey) {
     x: xs, y: ys, customdata,
     line:   { color: endColor, width: 2 },
     marker: { color: dotColors, size: 6, line: { width: 1, color: "rgba(0,0,0,0.2)" } },
-    hovertemplate: "<b>Trade #%{x}</b><br>Cumul. P&L: <b>%{y:$,.2f}</b><br>%{customdata[1]}<extra></extra>",
+    hovertemplate: "<b>%{x}</b><br>Cumul. P&L: <b>%{y:$,.2f}</b><extra></extra>",
     showlegend: false,
   };
 
@@ -828,8 +962,9 @@ function renderEquityCurveForStrategy(nickname, stratKey) {
     margin: { t: 8, r: 16, b: 44, l: 72 },
     hovermode: "closest",
     font: { color: cssVar("--ink-muted"), size: 11, family: "Inter, Segoe UI, sans-serif" },
-    xaxis: { title: { text: "Trade #", font: { size: 10 } }, gridcolor: cssVar("--plot-grid"),
-      linecolor: cssVar("--plot-grid"), tickfont: { size: 9, color: cssVar("--ink-muted") }, nticks: Math.min(xs.length, 12) },
+    xaxis: { type: "date", title: { text: "Date", font: { size: 10 } }, tickformat: "%Y-%m-%d",
+      gridcolor: cssVar("--plot-grid"),
+      linecolor: cssVar("--plot-grid"), tickfont: { size: 9, color: cssVar("--ink-muted") } },
     yaxis: { tickformat: "$,.0f", gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"),
       tickfont: { size: 10, color: cssVar("--ink-muted") } },
     shapes: [{ type: "line", x0: 0, x1: 1, xref: "paper", y0: 0, y1: 0,
@@ -882,45 +1017,86 @@ function renderInlineTradeChart(tkey, tidx) {
   const dirCol  = dir === "buy" ? cssVar("--good") : cssVar("--warn");
   const pnlCol  = isWin ? cssVar("--good") : cssVar("--danger");
 
-  const allY = [entY, extY, sl, tp].filter(v => v > 0);
-  const pad  = (Math.max(...allY) - Math.min(...allY)) * 0.15 || Math.abs(entY) * 0.001;
-  const yMin = Math.min(...allY) - pad;
-  const yMax = Math.max(...allY) + pad;
-
-  const traces = [
-    { type: "scatter", mode: "lines",
-      x: [entX, extX], y: [entY, extY],
-      line: { color: pnlCol, width: 2, dash: "dot" },
-      showlegend: false, hoverinfo: "skip" },
-    { type: "scatter", mode: "markers+text",
-      x: [entX], y: [entY],
-      marker: { symbol: dir === "buy" ? "triangle-up" : "triangle-down", size: 14, color: dirCol },
-      text: ["Entry"], textposition: "top center",
-      textfont: { color: dirCol, size: 10 },
-      showlegend: false,
-      hovertemplate: `<b>Entry</b><br>${pxFmt(entY)}<br>${esc(entX.replace("T"," ").slice(0,19))}<extra></extra>` },
-    { type: "scatter", mode: "markers+text",
-      x: [extX], y: [extY],
-      marker: { symbol: "x", size: 12, color: pnlCol, line: { width: 2 } },
-      text: ["Exit"], textposition: "top center",
-      textfont: { color: pnlCol, size: 10 },
-      showlegend: false,
-      hovertemplate: `<b>Exit</b><br>${pxFmt(extY)}<br>${esc(extX.replace("T"," ").slice(0,19))}<extra></extra>` },
-  ];
+  const candles     = trade.candles ?? null;
+  const entryIdx    = trade.candles_entry_idx ?? 0;
+  const initBefore  = trade.candles_init_before ?? 60;
+  const initAfter   = trade.candles_init_after  ?? 40;
 
   const shapes = [], annotations = [];
+  const shapeX0 = candles ? candles[Math.max(0, entryIdx - initBefore)]?.[0] ?? entX : entX;
+  const shapeX1 = candles ? candles[Math.min(candles.length - 1, entryIdx + initAfter)]?.[0] ?? extX : extX;
+
   if (sl > 0) {
-    shapes.push({ type: "line", x0: entX, x1: extX, y0: sl, y1: sl,
+    shapes.push({ type: "line", x0: shapeX0, x1: shapeX1, y0: sl, y1: sl,
       line: { color: "rgba(255,123,97,0.65)", width: 1.5, dash: "dash" } });
-    annotations.push({ x: extX, y: sl, text: `SL ${pxFmt(sl)}`,
+    annotations.push({ x: shapeX1, y: sl, text: `SL ${pxFmt(sl)}`,
       showarrow: false, xanchor: "right", font: { size: 9, color: "rgba(255,123,97,0.85)" } });
   }
   if (tp > 0) {
-    shapes.push({ type: "line", x0: entX, x1: extX, y0: tp, y1: tp,
+    shapes.push({ type: "line", x0: shapeX0, x1: shapeX1, y0: tp, y1: tp,
       line: { color: "rgba(111,217,143,0.65)", width: 1.5, dash: "dash" } });
-    annotations.push({ x: extX, y: tp, text: `TP ${pxFmt(tp)}`,
+    annotations.push({ x: shapeX1, y: tp, text: `TP ${pxFmt(tp)}`,
       showarrow: false, xanchor: "right", font: { size: 9, color: "rgba(111,217,143,0.85)" } });
   }
+
+  let traces;
+  if (candles && candles.length > 0) {
+    const cdTs = candles.map(c => c[0]);
+    const cdO  = candles.map(c => c[1]);
+    const cdH  = candles.map(c => c[2]);
+    const cdL  = candles.map(c => c[3]);
+    const cdC  = candles.map(c => c[4]);
+    traces = [
+      { type: "candlestick", name: sym,
+        x: cdTs, open: cdO, high: cdH, low: cdL, close: cdC,
+        increasing: { line: { color: "rgba(111,217,143,0.9)" }, fillcolor: "rgba(111,217,143,0.5)" },
+        decreasing: { line: { color: "rgba(255,123,97,0.9)"  }, fillcolor: "rgba(255,123,97,0.5)"  },
+        showlegend: false,
+        hovertemplate: "O:%{open}<br>H:%{high}<br>L:%{low}<br>C:%{close}<extra></extra>" },
+      { type: "scatter", mode: "markers+text",
+        x: [entX], y: [entY],
+        marker: { symbol: dir === "buy" ? "triangle-up" : "triangle-down", size: 14, color: dirCol },
+        text: ["Entry"], textposition: "top center",
+        textfont: { color: dirCol, size: 10 }, showlegend: false,
+        hovertemplate: `<b>Entry</b><br>${pxFmt(entY)}<br>${esc(entX.replace("T"," ").slice(0,19))}<extra></extra>` },
+      { type: "scatter", mode: "markers+text",
+        x: [extX], y: [extY],
+        marker: { symbol: "x", size: 12, color: pnlCol, line: { width: 2 } },
+        text: ["Exit"], textposition: "top center",
+        textfont: { color: pnlCol, size: 10 }, showlegend: false,
+        hovertemplate: `<b>Exit</b><br>${pxFmt(extY)}<br>${esc(extX.replace("T"," ").slice(0,19))}<extra></extra>` },
+    ];
+  } else {
+    const allY = [entY, extY, sl, tp].filter(v => v > 0);
+    const pad  = (Math.max(...allY) - Math.min(...allY)) * 0.15 || Math.abs(entY) * 0.001;
+    traces = [
+      { type: "scatter", mode: "lines",
+        x: [entX, extX], y: [entY, extY],
+        line: { color: pnlCol, width: 2, dash: "dot" },
+        showlegend: false, hoverinfo: "skip" },
+      { type: "scatter", mode: "markers+text",
+        x: [entX], y: [entY],
+        marker: { symbol: dir === "buy" ? "triangle-up" : "triangle-down", size: 14, color: dirCol },
+        text: ["Entry"], textposition: "top center",
+        textfont: { color: dirCol, size: 10 }, showlegend: false,
+        hovertemplate: `<b>Entry</b><br>${pxFmt(entY)}<br>${esc(entX.replace("T"," ").slice(0,19))}<extra></extra>` },
+      { type: "scatter", mode: "markers+text",
+        x: [extX], y: [extY],
+        marker: { symbol: "x", size: 12, color: pnlCol, line: { width: 2 } },
+        text: ["Exit"], textposition: "top center",
+        textfont: { color: pnlCol, size: 10 }, showlegend: false,
+        hovertemplate: `<b>Exit</b><br>${pxFmt(extY)}<br>${esc(extX.replace("T"," ").slice(0,19))}<extra></extra>` },
+    ];
+  }
+
+  // Initial visible x-range
+  const x0init = candles ? candles[Math.max(0, entryIdx - initBefore)]?.[0] ?? entX : entX;
+  const x1init = candles ? candles[Math.min(candles.length - 1, entryIdx + initAfter)]?.[0] ?? extX : extX;
+
+  const allY2 = [entY, extY, sl, tp].filter(v => v > 0);
+  const pad2  = (Math.max(...allY2) - Math.min(...allY2)) * 0.15 || Math.abs(entY) * 0.001;
+  const yMin = Math.min(...allY2) - pad2;
+  const yMax = Math.max(...allY2) + pad2;
 
   Plotly.react(chartEl, traces, {
     paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
@@ -930,15 +1106,42 @@ function renderInlineTradeChart(tkey, tidx) {
     xaxis: { type: "date", tickformat: "%Y-%m-%d %H:%M", tickangle: -20,
       gridcolor: cssVar("--plot-grid"), linecolor: cssVar("--plot-grid"),
       tickfont: { color: cssVar("--ink-muted"), size: 10 },
-      // Drop non-working days so weekends don't create empty gaps
+      range: [x0init, x1init],
       rangebreaks: [{ bounds: ["sat", "mon"] }] },
     yaxis: { tickformat: entY < 10 ? ".5f" : ".2f",
       gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"),
       tickfont: { color: cssVar("--ink-muted"), size: 10 },
-      range: [yMin, yMax] },
+      range: candles ? undefined : [yMin, yMax] },
     shapes, annotations,
   }, { responsive: true, displaylogo: false,
     modeBarButtonsToRemove: ["lasso2d","select2d","autoScale2d","toImage"] });
+
+  // Track state for +100 buttons
+  if (candles) {
+    _chartState[chartId] = { candles, entryIdx,
+      visibleBefore: initBefore, visibleAfter: initAfter };
+  }
+
+  // Wire +100 buttons (they are in the parent container, added by renderStrategyTrades)
+  const wrapEl = chartEl.closest(".strat-chart-wrap");
+  if (wrapEl && candles) {
+    wrapEl.querySelector(".candle-btn-before")?.addEventListener("click", () => {
+      const st = _chartState[chartId];
+      if (!st) return;
+      st.visibleBefore = Math.min(st.entryIdx, st.visibleBefore + 100);
+      const i0 = st.entryIdx - st.visibleBefore;
+      const i1 = Math.min(st.candles.length - 1, st.entryIdx + st.visibleAfter);
+      Plotly.relayout(chartEl, { "xaxis.range": [st.candles[i0][0], st.candles[i1][0]] });
+    });
+    wrapEl.querySelector(".candle-btn-after")?.addEventListener("click", () => {
+      const st = _chartState[chartId];
+      if (!st) return;
+      st.visibleAfter = Math.min(st.candles.length - 1 - st.entryIdx, st.visibleAfter + 100);
+      const i0 = Math.max(0, st.entryIdx - st.visibleBefore);
+      const i1 = Math.min(st.candles.length - 1, st.entryIdx + st.visibleAfter);
+      Plotly.relayout(chartEl, { "xaxis.range": [st.candles[i0][0], st.candles[i1][0]] });
+    });
+  }
 
   if (statsEl) {
     const msc = (label, val, color) =>
@@ -1046,9 +1249,18 @@ function renderPaneAlerts(nickname, benchmarks) {
   for (const b of benchmarks) {
     const label = b.window ? `${b.window.start} → ${b.window.end}` : b.public_name;
     if (hasConsecutiveFingerprintChange(b.id)) {
-      cards.push({ kind: "alert",
-        title: `${label}: result fingerprint changed vs previous run`,
-        body: "The trade output hash differs from the prior monitoring run. This indicates a code or data change that affected results." });
+      const latest = getLatestRun();
+      const lb = (latest?.benchmarks ?? []).find(bm => bm.id === b.id);
+      const inputChanged = lb?.status?.input_changed_since_last_real_run === true;
+      if (inputChanged) {
+        cards.push({ kind: "warn",
+          title: `${label}: input data or config changed`,
+          body: "The OHLC data or strategy config changed since the last run. The fingerprint difference is expected — re-run to establish a new baseline." });
+      } else {
+        cards.push({ kind: "alert",
+          title: `${label}: result fingerprint changed vs previous run`,
+          body: "Same input data, different trade outputs. This is a code regression — the strategy produced different results despite identical inputs." });
+      }
     }
     if (hasConsecutivePnlDrift(b.id)) {
       cards.push({ kind: "warn",
@@ -1062,9 +1274,8 @@ function renderPaneAlerts(nickname, benchmarks) {
     }
   }
   if (!cards.length) {
-    cards.push({ kind: "pass",
-      title: "No regressions vs previous run",
-      body: "Results and PnL are consistent with the preceding monitoring run." });
+    el.innerHTML = "";
+    return;
   }
   el.innerHTML = cards.map(c => `
     <article class="alert-card ${c.kind}">
@@ -1086,9 +1297,15 @@ function renderPaneMonths(nickname, benchmarks) {
     const pct = Math.min(100, Math.abs(pnl) / maxAbsPnl * 100);
     const barColor = pnl >= 0 ? "var(--good)" : "var(--danger)";
     // Use consecutive-run comparison for the ⚠ changed badge
-    const hasAlert = hasConsecutiveFingerprintChange(b.id) || hasConsecutivePnlDrift(b.id);
-    const alertBadge = hasAlert
-      ? `<span class="pill alert" style="margin-left:8px;font-size:.7rem">⚠ changed</span>` : "";
+    const fingerprintChanged = hasConsecutiveFingerprintChange(b.id);
+    const inputChanged = b.status?.input_changed_since_last_real_run === true;
+    const hasTrueRegression = fingerprintChanged && !inputChanged;
+    const hasAlert = hasTrueRegression || hasConsecutivePnlDrift(b.id);
+    const alertBadge = hasTrueRegression
+      ? `<span class="pill alert" style="margin-left:8px;font-size:.7rem">⚠ changed</span>`
+      : (fingerprintChanged && inputChanged)
+        ? `<span class="pill warn" style="margin-left:8px;font-size:.7rem">⚠ data</span>`
+        : "";
     const label = b.window
       ? (b.window.start.slice(0, 7) === b.window.end.slice(0, 7)
           ? b.window.start.slice(0, 7)
@@ -1291,51 +1508,81 @@ function openTradeModal(trade) {
     `<span class="modal-chip chip-${exitReason === 'tp' ? 'tp' : exitReason === 'sl' ? 'sl' : 'neutral'}">${esc(exitReason)} exit</span>`,
   ].join("");
 
-  // Build Plotly chart
-  const allY = [entY, extY, sl, tp].filter(v => v > 0);
-  const yMin = Math.min(...allY) * (dir === "buy" ? 0.9997 : 1.0003);
-  const yMax = Math.max(...allY) * (dir === "buy" ? 1.0003 : 0.9997);
+  const candles    = trade.candles ?? null;
+  const entryIdx   = trade.candles_entry_idx ?? 0;
+  const initBefore = trade.candles_init_before ?? 60;
+  const initAfter  = trade.candles_init_after  ?? 40;
 
-  const traces = [
-    // Entry → Exit connecting line
-    { type: "scatter", mode: "lines",
-      x: [entX, extX], y: [entY, extY],
-      line: { color: pnlCol, width: 2.5, dash: "dot" },
-      showlegend: false, hoverinfo: "skip" },
-    // Entry marker
-    { type: "scatter", mode: "markers+text",
-      x: [entX], y: [entY],
-      marker: { symbol: dir === "buy" ? "triangle-up" : "triangle-down", size: 16, color: dirCol },
-      text: ["Entry"], textposition: "top center",
-      textfont: { color: dirCol, size: 11 },
-      showlegend: false,
-      hovertemplate: `<b>Entry</b><br>Price: ${pxFmt(entY)}<br>Time: ${esc(entX.replace("T"," ").slice(0,19))}<extra></extra>` },
-    // Exit marker
-    { type: "scatter", mode: "markers+text",
-      x: [extX], y: [extY],
-      marker: { symbol: "x", size: 14, color: pnlCol, line: { width: 2 } },
-      text: ["Exit"], textposition: "top center",
-      textfont: { color: pnlCol, size: 11 },
-      showlegend: false,
-      hovertemplate: `<b>Exit</b><br>Price: ${pxFmt(extY)}<br>Time: ${esc(extX.replace("T"," ").slice(0,19))}<extra></extra>` },
-  ];
-
-  const shapes = [];
-  const annotations = [];
-
+  const shapes = [], annotations = [];
+  const shapeX0 = candles ? candles[Math.max(0, entryIdx - initBefore)]?.[0] ?? entX : entX;
+  const shapeX1 = candles ? candles[Math.min(candles.length - 1, entryIdx + initAfter)]?.[0] ?? extX : extX;
   if (sl > 0) {
-    shapes.push({ type: "line", x0: entX, x1: extX, y0: sl, y1: sl,
+    shapes.push({ type: "line", x0: shapeX0, x1: shapeX1, y0: sl, y1: sl,
       line: { color: "rgba(255,123,97,0.65)", width: 1.5, dash: "dash" } });
-    annotations.push({ x: extX, y: sl, text: `SL ${pxFmt(sl)}`,
+    annotations.push({ x: shapeX1, y: sl, text: `SL ${pxFmt(sl)}`,
       showarrow: false, xanchor: "right", font: { size: 10, color: "rgba(255,123,97,0.85)" },
       bgcolor: "rgba(0,0,0,0)" });
   }
   if (tp > 0) {
-    shapes.push({ type: "line", x0: entX, x1: extX, y0: tp, y1: tp,
+    shapes.push({ type: "line", x0: shapeX0, x1: shapeX1, y0: tp, y1: tp,
       line: { color: "rgba(111,217,143,0.65)", width: 1.5, dash: "dash" } });
-    annotations.push({ x: extX, y: tp, text: `TP ${pxFmt(tp)}`,
+    annotations.push({ x: shapeX1, y: tp, text: `TP ${pxFmt(tp)}`,
       showarrow: false, xanchor: "right", font: { size: 10, color: "rgba(111,217,143,0.85)" },
       bgcolor: "rgba(0,0,0,0)" });
+  }
+
+  let traces;
+  const x0init = candles ? candles[Math.max(0, entryIdx - initBefore)]?.[0] ?? entX : entX;
+  const x1init = candles ? candles[Math.min(candles.length - 1, entryIdx + initAfter)]?.[0] ?? extX : extX;
+
+  if (candles && candles.length > 0) {
+    const cdTs = candles.map(c => c[0]);
+    const cdO  = candles.map(c => c[1]);
+    const cdH  = candles.map(c => c[2]);
+    const cdL  = candles.map(c => c[3]);
+    const cdC  = candles.map(c => c[4]);
+    traces = [
+      { type: "candlestick", name: sym,
+        x: cdTs, open: cdO, high: cdH, low: cdL, close: cdC,
+        increasing: { line: { color: "rgba(111,217,143,0.9)" }, fillcolor: "rgba(111,217,143,0.5)" },
+        decreasing: { line: { color: "rgba(255,123,97,0.9)"  }, fillcolor: "rgba(255,123,97,0.5)"  },
+        showlegend: false,
+        hovertemplate: "O:%{open}<br>H:%{high}<br>L:%{low}<br>C:%{close}<extra></extra>" },
+      { type: "scatter", mode: "markers+text",
+        x: [entX], y: [entY],
+        marker: { symbol: dir === "buy" ? "triangle-up" : "triangle-down", size: 16, color: dirCol },
+        text: ["Entry"], textposition: "top center",
+        textfont: { color: dirCol, size: 11 }, showlegend: false,
+        hovertemplate: `<b>Entry</b><br>Price: ${pxFmt(entY)}<br>Time: ${esc(entX.replace("T"," ").slice(0,19))}<extra></extra>` },
+      { type: "scatter", mode: "markers+text",
+        x: [extX], y: [extY],
+        marker: { symbol: "x", size: 14, color: pnlCol, line: { width: 2 } },
+        text: ["Exit"], textposition: "top center",
+        textfont: { color: pnlCol, size: 11 }, showlegend: false,
+        hovertemplate: `<b>Exit</b><br>Price: ${pxFmt(extY)}<br>Time: ${esc(extX.replace("T"," ").slice(0,19))}<extra></extra>` },
+    ];
+  } else {
+    const allY = [entY, extY, sl, tp].filter(v => v > 0);
+    const yMin = Math.min(...allY) * (dir === "buy" ? 0.9997 : 1.0003);
+    const yMax = Math.max(...allY) * (dir === "buy" ? 1.0003 : 0.9997);
+    traces = [
+      { type: "scatter", mode: "lines",
+        x: [entX, extX], y: [entY, extY],
+        line: { color: pnlCol, width: 2.5, dash: "dot" },
+        showlegend: false, hoverinfo: "skip" },
+      { type: "scatter", mode: "markers+text",
+        x: [entX], y: [entY],
+        marker: { symbol: dir === "buy" ? "triangle-up" : "triangle-down", size: 16, color: dirCol },
+        text: ["Entry"], textposition: "top center",
+        textfont: { color: dirCol, size: 11 }, showlegend: false,
+        hovertemplate: `<b>Entry</b><br>Price: ${pxFmt(entY)}<br>Time: ${esc(entX.replace("T"," ").slice(0,19))}<extra></extra>` },
+      { type: "scatter", mode: "markers+text",
+        x: [extX], y: [extY],
+        marker: { symbol: "x", size: 14, color: pnlCol, line: { width: 2 } },
+        text: ["Exit"], textposition: "top center",
+        textfont: { color: pnlCol, size: 11 }, showlegend: false,
+        hovertemplate: `<b>Exit</b><br>Price: ${pxFmt(extY)}<br>Time: ${esc(extX.replace("T"," ").slice(0,19))}<extra></extra>` },
+    ];
   }
 
   const layout = {
@@ -1346,19 +1593,52 @@ function openTradeModal(trade) {
     xaxis: { type: "date", tickformat: "%Y-%m-%d %H:%M", tickangle: -25,
       gridcolor: cssVar("--plot-grid"), linecolor: cssVar("--plot-grid"),
       tickfont: { color: cssVar("--ink-muted"), size: 10 },
-      // Hide weekend gaps so there are no empty spans in the chart
+      range: [x0init, x1init],
       rangebreaks: [{ bounds: ["sat", "mon"] }] },
     yaxis: { tickformat: entY < 10 ? ".5f" : ".2f",
       gridcolor: cssVar("--plot-grid"), zerolinecolor: cssVar("--plot-grid"),
-      tickfont: { color: cssVar("--ink-muted"), size: 10 },
-      range: [yMin, yMax] },
-    shapes,
-    annotations,
+      tickfont: { color: cssVar("--ink-muted"), size: 10 } },
+    shapes, annotations,
   };
 
   const el = document.getElementById("modal-chart");
   Plotly.react(el, traces, layout, { responsive: true, displaylogo: false,
     modeBarButtonsToRemove: ["lasso2d","select2d","autoScale2d","toImage"] });
+
+  // +100 buttons for modal
+  const btnWrap = document.getElementById("modal-candle-btns");
+  const btnBefore = document.getElementById("modal-candle-before");
+  const btnAfter  = document.getElementById("modal-candle-after");
+  if (btnWrap) {
+    if (candles) {
+      btnWrap.style.display = "flex";
+      _chartState["modal-chart"] = { candles, entryIdx,
+        visibleBefore: initBefore, visibleAfter: initAfter };
+      // Replace listeners (remove old ones by replacing nodes)
+      const newBefore = btnBefore.cloneNode(true);
+      const newAfter  = btnAfter.cloneNode(true);
+      btnBefore.replaceWith(newBefore);
+      btnAfter.replaceWith(newAfter);
+      document.getElementById("modal-candle-before").addEventListener("click", () => {
+        const st = _chartState["modal-chart"];
+        if (!st) return;
+        st.visibleBefore = Math.min(st.entryIdx, st.visibleBefore + 100);
+        const i0 = st.entryIdx - st.visibleBefore;
+        const i1 = Math.min(st.candles.length - 1, st.entryIdx + st.visibleAfter);
+        Plotly.relayout(el, { "xaxis.range": [st.candles[i0][0], st.candles[i1][0]] });
+      });
+      document.getElementById("modal-candle-after").addEventListener("click", () => {
+        const st = _chartState["modal-chart"];
+        if (!st) return;
+        st.visibleAfter = Math.min(st.candles.length - 1 - st.entryIdx, st.visibleAfter + 100);
+        const i0 = Math.max(0, st.entryIdx - st.visibleBefore);
+        const i1 = Math.min(st.candles.length - 1, st.entryIdx + st.visibleAfter);
+        Plotly.relayout(el, { "xaxis.range": [st.candles[i0][0], st.candles[i1][0]] });
+      });
+    } else {
+      btnWrap.style.display = "none";
+    }
+  }
 
   // Stats row
   const statsEl = document.getElementById("modal-stats");

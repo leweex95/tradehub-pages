@@ -713,6 +713,63 @@ tbody tr:hover { background: var(--tab-hover-bg); }
   font-weight: 700;
 }
 
+/* ── Date filter bar ─────────────────────────────────────────────────────── */
+.date-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 0 4px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.date-custom-inputs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.date-input {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.date-clear-btn {
+  padding: 3px 8px;
+  font-size: 0.8rem;
+}
+
+/* ── Candle extend buttons ───────────────────────────────────────────────── */
+.candle-btn {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color .15s, color .15s;
+}
+
+.candle-btn:hover {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
 /* ── Per-tab history charts ──────────────────────────────────────────────── */
 .pane-history-charts { margin-top: 4px; }
 

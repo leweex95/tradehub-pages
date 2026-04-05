@@ -19,8 +19,6 @@
   *{box-sizing:border-box;margin:0;padding:0;}
   html,body{height:100%;}
   body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden;}
-
-  /* ── Header ───────────────────────────────────────── */
   header{
     position:sticky;top:0;z-index:100;
     display:flex;align-items:center;justify-content:space-between;
@@ -45,8 +43,6 @@
     transition:border-color .2s;
   }
   #theme-btn:hover{border-color:var(--accent);}
-
-  /* ── Hero ─────────────────────────────────────────── */
   .hero{
     display:flex;flex-direction:column;align-items:center;
     justify-content:center;text-align:center;
@@ -65,15 +61,12 @@
     font-size:1.05rem;color:var(--muted);max-width:540px;line-height:1.75;
     margin-bottom:52px;
   }
-
-  /* ── Panel grid ───────────────────────────────────── */
   .panels{
     display:grid;gap:24px;width:100%;max-width:920px;
     grid-template-columns:1fr;
   }
   @media(min-width:680px){.panels{grid-template-columns:repeat(2,minmax(0,1fr));}}
   @media(min-width:1060px){.panels{grid-template-columns:repeat(3,minmax(0,1fr));max-width:1240px;}}
-
   .panel{
     position:relative;overflow:hidden;
     background:var(--panel);border:1px solid var(--border);border-radius:18px;
@@ -90,7 +83,6 @@
     background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.025) 100%);
     pointer-events:none;
   }
-
   .panel-icon{
     width:52px;height:52px;border-radius:12px;
     display:flex;align-items:center;justify-content:center;font-size:1.7rem;
@@ -98,22 +90,18 @@
   .panel-bt .panel-icon{background:rgba(65,217,168,.12);}
   .panel-ft .panel-icon{background:rgba(245,194,107,.12);}
   .panel-fh .panel-icon{background:rgba(102,182,255,.12);}
-
   .panel-lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;}
   .panel-bt .panel-lbl{color:var(--accent);}
   .panel-ft .panel-lbl{color:var(--warn);}
   .panel-fh .panel-lbl{color:#66b6ff;}
-
   .panel-title{font-size:1.5rem;font-weight:800;letter-spacing:-.4px;}
   .panel-desc{font-size:13.5px;color:var(--muted);line-height:1.7;}
-
   .panel-features{display:flex;flex-direction:column;gap:7px;margin-top:2px;}
   .feat{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted);}
   .feat::before{content:'✓';font-weight:700;}
   .panel-bt .feat::before{color:var(--accent);}
   .panel-ft .feat::before{color:var(--warn);}
   .panel-fh .feat::before{color:#66b6ff;}
-
   .panel-cta{
     margin-top:auto;padding-top:18px;
     display:flex;align-items:center;gap:9px;font-size:14px;font-weight:700;
@@ -123,8 +111,6 @@
   .panel-fh .panel-cta{color:#66b6ff;}
   .arrow{font-size:1.1rem;transition:transform .2s;}
   .panel:hover .arrow{transform:translateX(4px);}
-
-  /* ── Stats strip ──────────────────────────────────── */
   .stats-strip{
     display:flex;flex-wrap:wrap;justify-content:center;
     border-top:1px solid var(--border);border-bottom:1px solid var(--border);
@@ -137,8 +123,6 @@
   .stat-item:last-child{border-right:none;}
   .stat-val{font-size:1.7rem;font-weight:800;}
   .stat-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px;}
-
-  /* ── Footer ───────────────────────────────────────── */
   footer{
     text-align:center;padding:26px 24px;
     color:var(--muted);font-size:12px;border-top:1px solid var(--border);
@@ -156,6 +140,7 @@
   </a>
   <div class="hdr-right">
     <a class="hdr-link" href="reports/monitoring/latest/index.html">Monitoring</a>
+    <a class="hdr-link" href="reports/monitoring/full-history/index.html">Full History</a>
     <a class="hdr-link" href="forward/index.html">Forward</a>
     <a class="hdr-link" href="https://github.com/leweex95/tradehub-pages" target="_blank">GitHub</a>
     <button id="theme-btn" title="Toggle theme">🌙</button>
@@ -168,31 +153,31 @@
     Strategy Intelligence<br><span class="hi">at Your Fingertips</span>
   </h1>
   <p class="hero-sub">
-    Multi-strategy backtesting across fixed regression windows and full-history
-    windows — plus live forward testing deployed from Windows via Docker.
+    Multi-strategy backtesting across fixed 2-month regression windows and full
+    2-year+ history — plus live forward testing deployed from Windows via Docker.
   </p>
 
   <div class="panels">
 
-    <!-- Backtester / Monitoring panel -->
+    <!-- 2-month regression Backtester panel -->
     <a class="panel panel-bt" href="reports/monitoring/latest/index.html">
       <div class="panel-icon">📊</div>
-      <div class="panel-lbl">Historical Analysis</div>
+      <div class="panel-lbl">2-Month Regression</div>
       <h2 class="panel-title">Backtester</h2>
       <p class="panel-desc">
-        Deep-dive into historical performance across strategy families,
-        multiple symbols and date ranges with full trade-level detail.
+        Daily fixed-window regression suite — same 2025-03 to 2025-05 window
+        every run to catch code regressions and profitability drift early.
       </p>
       <div class="panel-features">
-        <div class="feat">Walk-forward optimisation</div>
-        <div class="feat">Multi-symbol comparison</div>
-        <div class="feat">Equity curve &amp; drawdown analysis</div>
-        <div class="feat">Trade journal &amp; interactive charts</div>
+        <div class="feat">7 strategy families</div>
+        <div class="feat">9 symbols per strategy</div>
+        <div class="feat">Result fingerprinting &amp; regression alerts</div>
+        <div class="feat">Runtime stability tracking (10 runs)</div>
       </div>
       <div class="panel-cta">Open Backtester <span class="arrow">→</span></div>
     </a>
 
-    <!-- Full-history panel -->
+    <!-- 2-year+ Full History panel -->
     <a class="panel panel-fh" href="reports/monitoring/full-history/index.html">
       <div class="panel-icon">🧭</div>
       <div class="panel-lbl">Full History</div>
@@ -202,10 +187,10 @@
         robustness ranking and regime-aware profitability tracking.
       </p>
       <div class="panel-features">
-        <div class="feat">Same symbol basket as regression suite</div>
-        <div class="feat">Stable fixed horizon for comparability</div>
-        <div class="feat">Runtime, PnL, and fingerprint tracking</div>
-        <div class="feat">Best-strategy selection source</div>
+        <div class="feat">Same 9-symbol basket as regression suite</div>
+        <div class="feat">Fixed 2024–2026 horizon for comparability</div>
+        <div class="feat">PnL, win-rate &amp; profit factor rankings</div>
+        <div class="feat">Status: 2 runs · last 2026-04-05 21:42 UTC</div>
       </div>
       <div class="panel-cta">Open Full-History View <span class="arrow">→</span></div>
     </a>
@@ -223,7 +208,7 @@
         <div class="feat">Daily &amp; weekly P&amp;L breakdown</div>
         <div class="feat">Per-symbol &amp; per-strategy filtering</div>
         <div class="feat">Live equity curve ($10 k base)</div>
-        <div class="feat">Trade-by-trade log with exit tags</div>
+        <div class="feat">Last updated: 2026-04-05 18:01 UTC</div>
       </div>
       <div class="panel-cta">Open Forward Tests <span class="arrow">→</span></div>
     </a>
@@ -237,7 +222,7 @@
     <div class="stat-lbl">Strategies</div>
   </div>
   <div class="stat-item">
-    <div class="stat-val" style="color:var(--warn)">10+</div>
+    <div class="stat-val" style="color:var(--warn)">9</div>
     <div class="stat-lbl">Symbols</div>
   </div>
   <div class="stat-item">
@@ -245,8 +230,8 @@
     <div class="stat-lbl">Best Backtest</div>
   </div>
   <div class="stat-item">
-    <div class="stat-val" style="color:var(--accent)">Windows</div>
-    <div class="stat-lbl">Docker Host</div>
+    <div class="stat-val" style="color:var(--accent)">10</div>
+    <div class="stat-lbl">Regression Runs</div>
   </div>
   <div class="stat-item">
     <div class="stat-val" style="color:var(--warn)">Docker</div>
@@ -257,20 +242,20 @@
 <footer>
   <p>TradeHub Strategy Research Platform &nbsp;·&nbsp;
   <a href="https://github.com/leweex95/tradehub-pages">GitHub Pages</a>
-  &nbsp;·&nbsp; Updated 2026-04-05 17:51 UTC
+  &nbsp;·&nbsp; commit df5f94c &nbsp;·&nbsp; 2026-04-05 23:00 UTC
   </p>
 </footer>
 
 <script>
 (function(){
   var btn=document.getElementById('theme-btn');
-  var html=document.documentElement;
-  var stored=localStorage.getItem('th-theme')||'dark';
-  html.setAttribute('data-theme',stored);
-  btn.textContent=stored==='dark'?'☀️':'🌙';
+  var h=document.documentElement;
+  var s=localStorage.getItem('th-theme')||'dark';
+  h.setAttribute('data-theme',s);
+  btn.textContent=s==='dark'?'☀️':'🌙';
   btn.addEventListener('click',function(){
-    var t=html.getAttribute('data-theme')==='dark'?'light':'dark';
-    html.setAttribute('data-theme',t);
+    var t=h.getAttribute('data-theme')==='dark'?'light':'dark';
+    h.setAttribute('data-theme',t);
     localStorage.setItem('th-theme',t);
     btn.textContent=t==='dark'?'☀️':'🌙';
   });
