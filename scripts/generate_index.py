@@ -1,4 +1,15 @@
 ﻿#!/usr/bin/env python3
+"""
+Generate the TradeHub GitHub Pages landing page (index.html).
+
+Produces a 3-panel layout:
+  1. Backtester  → reports/monitoring/latest/index.html  (2-month regression)
+  2. Full History → reports/monitoring/full-history/index.html  (2-year+)
+  3. Forward Testing → forward/index.html  (live/demo)
+
+This script is executed by the GitHub Actions workflow on every push, so it
+MUST keep the 3-panel structure — never revert to 2 tiles.
+"""
 from __future__ import annotations
 
 import datetime as dt
@@ -123,27 +134,53 @@ def render_report_list(reports: list[Report]) -> str:
     return "<ul class=\"report-list\">\n" + "\n".join(rows) + "\n</ul>"
 
 
-def build_html(reports: list[Report]) -> str:
+def _read_monitoring_latest(subdir: str) -> dict:
+    """Load monitoring-latest.json from a reports/monitoring/<subdir>/ folder."""
+    path = ROOT / "reports" / "monitoring" / subdir / "monitoring-latest.json"
+    if path.exists():
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {}
+
+
+def _monitoring_updated(meta: dict) -> str:
+    ts = meta.get("generated_at") or (
+        (meta.get("latest_run") or {}).get("recorded_at")
+    )
+    if ts:
+        try:
+            return format_utc(
+                dt.datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(UTC)
+            )
+        except Exception:
+            pass
+    return "—"
+
+
+def _monitoring_run_count(meta: dict) -> int:
+    return int((meta.get("history_meta") or {}).get("real_run_count") or 0)
+
+
+def build_html(reports: list[Report]) -> str:  # noqa: ARG001 — kept for compat
     now = dt.datetime.now(tz=UTC)
     commit = run_git(["rev-parse", "--short", "HEAD"]) or "unknown"
 
-    # Find most-recent monitoring and forward reports
-    mon_report = next(
-        (r for r in reports if "monitoring" in r.rel_path and r.rel_path.endswith("index.html")),
-        reports[0] if reports else None,
-    )
-    fwd_report = next(
-        (r for r in reports if "forward" in r.rel_path and r.rel_path.endswith("index.html")),
-        None,
-    )
-    mon_href = html.escape(mon_report.rel_path) if mon_report else "#"
-    mon_updated = format_utc(mon_report.updated_at) if mon_report else "—"
-    fwd_href = html.escape(fwd_report.rel_path) if fwd_report else "forward/index.html"
-    fwd_updated = format_utc(fwd_report.updated_at) if fwd_report else "—"
+    # ── 2-month regression (Backtester) ──────────────────────────────────────
+    mon_meta = _read_monitoring_latest("latest")
+    mon_updated = _monitoring_updated(mon_meta)
+    mon_runs = _monitoring_run_count(mon_meta)
 
-    # Read forward_data.json for real timestamp + mode badge
+    # ── 2-year+ full-history ──────────────────────────────────────────────────
+    fh_meta = _read_monitoring_latest("full-history")
+    fh_updated = _monitoring_updated(fh_meta)
+    fh_runs = _monitoring_run_count(fh_meta)
+    fh_run_note = f"{fh_runs} run{'s' if fh_runs != 1 else ''}" if fh_runs else "no runs yet"
+
+    # ── Forward testing ───────────────────────────────────────────────────────
     fwd_json_path = ROOT / "forward" / "forward_data.json"
-    fwd_mode = "demo"
+    fwd_updated = "—"
     fwd_badge_class = "demo"
     fwd_badge_label = "Demo / Forward"
     if fwd_json_path.exists():
@@ -154,289 +191,277 @@ def build_html(reports: list[Report]) -> str:
                 fwd_updated = format_utc(
                     dt.datetime.fromisoformat(gen_at.replace("Z", "+00:00")).astimezone(UTC)
                 )
-            fwd_mode = fwd_meta.get("mode", "demo")
-            if fwd_mode == "live":
+            if fwd_meta.get("mode") == "live":
                 fwd_badge_class = "live"
                 fwd_badge_label = "Live Forward"
         except Exception:
             pass
 
+    ts = format_utc(now)
+
     return f"""<!DOCTYPE html>
 <html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TradeHub — Strategy Performance</title>
-  <style>
-    :root {{
-      --bg: #03060a;
-      --bg2: #070d14;
-      --panel: rgba(8, 20, 32, 0.92);
-      --panel-raised: rgba(12, 26, 42, 0.95);
-      --panel-border: rgba(65, 217, 168, 0.14);
-      --ink: #e8f4ef;
-      --ink-muted: #7aa898;
-      --accent: #41d9a8;
-      --accent-glow: rgba(65, 217, 168, 0.12);
-      --accent-border: rgba(65, 217, 168, 0.35);
-      --warn: #f5c26b;
-      --danger: #ff7b61;
-      --good: #6fd98f;
-      --shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
-    }}
-    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-    body {{
-      font-family: "Segoe UI", "Inter", Arial, sans-serif;
-      font-size: 15px;
-      line-height: 1.6;
-      color: var(--ink);
-      background: var(--bg);
-      background-image:
-        radial-gradient(ellipse at 12% 0%, rgba(65,217,168,.07) 0%, transparent 42%),
-        radial-gradient(ellipse at 88% 100%, rgba(255,123,97,.05) 0%, transparent 42%);
-      min-height: 100vh;
-    }}
-    .page {{
-      max-width: 1140px;
-      margin: 0 auto;
-      padding: 56px 24px 72px;
-    }}
-    /* brand header */
-    .brand {{
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 60px;
-    }}
-    .brand-dot {{
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 12px var(--accent);
-      animation: pulse 2.8s ease-in-out infinite;
-    }}
-    @keyframes pulse {{
-      0%, 100% {{ box-shadow: 0 0 8px var(--accent); }}
-      50%       {{ box-shadow: 0 0 22px var(--accent), 0 0 40px var(--accent-glow); }}
-    }}
-    .brand-name {{
-      font-size: 1.05rem;
-      font-weight: 700;
-      letter-spacing: -0.01em;
-    }}
-    .brand-sub {{ color: var(--ink-muted); font-weight: 400; }}
-    /* hero */
-    .hero {{ margin-bottom: 56px; }}
-    .eyebrow {{
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: var(--accent);
-      margin-bottom: 10px;
-    }}
-    .hero h1 {{
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: clamp(2.4rem, 5vw, 4.2rem);
-      line-height: 1.02;
-      letter-spacing: -0.025em;
-      margin-bottom: 16px;
-    }}
-    .hero h1 em {{ font-style: italic; color: var(--accent); }}
-    .hero p {{
-      font-size: 1.05rem;
-      color: var(--ink-muted);
-      max-width: 62ch;
-    }}
-    /* nav cards */
-    .cards {{
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 20px;
-      margin-bottom: 56px;
-    }}
-    .card {{
-      background: var(--panel);
-      border: 1px solid var(--panel-border);
-      border-radius: 24px;
-      padding: 28px 30px;
-      box-shadow: var(--shadow);
-      text-decoration: none;
-      color: inherit;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      transition: border-color .22s, background .22s, box-shadow .22s, transform .18s;
-      position: relative;
-      overflow: hidden;
-    }}
-    .card::before {{
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: 24px;
-      background: var(--accent-glow);
-      opacity: 0;
-      transition: opacity .22s;
-    }}
-    .card:hover {{ border-color: var(--accent-border); box-shadow: 0 28px 70px rgba(0,0,0,.65), 0 0 30px var(--accent-glow); transform: translateY(-2px); }}
-    .card:hover::before {{ opacity: 1; }}
-    .card-icon {{
-      font-size: 2.4rem;
-      line-height: 1;
-      margin-bottom: 4px;
-      position: relative;
-    }}
-    .card h2 {{
-      font-family: Georgia, "Times New Roman", serif;
-      font-size: 1.4rem;
-      font-weight: 600;
-      position: relative;
-    }}
-    .card p {{
-      font-size: 0.92rem;
-      color: var(--ink-muted);
-      position: relative;
-      flex: 1;
-    }}
-    .card-meta {{
-      font-size: 0.75rem;
-      color: var(--ink-muted);
-      position: relative;
-    }}
-    .card-arrow {{
-      font-size: 1.2rem;
-      color: var(--accent);
-      position: relative;
-      margin-top: 4px;
-    }}
-    .card-badge {{
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 999px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      border: 1px solid var(--panel-border);
-      color: var(--accent);
-      background: var(--accent-glow);
-      position: relative;
-    }}
-    .card-badge.live {{
-      color: var(--good);
-      background: rgba(111,217,143,.12);
-      border-color: rgba(111,217,143,.25);
-    }}
-    .card-badge.demo {{
-      color: var(--warn);
-      background: rgba(245,194,107,.10);
-      border-color: rgba(245,194,107,.22);
-    }}
-    /* features grid */
-    .features {{
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      margin-bottom: 56px;
-    }}
-    .feature {{
-      background: var(--panel);
-      border: 1px solid var(--panel-border);
-      border-radius: 16px;
-      padding: 18px 20px;
-    }}
-    .feature-icon {{ font-size: 1.4rem; margin-bottom: 8px; }}
-    .feature h3 {{ font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }}
-    .feature p {{ font-size: 0.84rem; color: var(--ink-muted); }}
-    /* footer */
-    .footer {{
-      font-size: 0.78rem;
-      color: rgba(120,160,140,.45);
-      text-align: center;
-      border-top: 1px solid var(--panel-border);
-      padding-top: 24px;
-    }}
-    @media (max-width: 600px) {{
-      .page {{ padding: 32px 16px 48px; }}
-      .hero h1 {{ font-size: 2.4rem; }}
-    }}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TradeHub — Strategy Research Platform</title>
+<style>
+  :root,[data-theme=dark]{{
+    --bg:#03060a;--bg2:#060c12;--panel:rgba(4,9,16,.97);
+    --border:rgba(65,217,168,.13);--accent:#41d9a8;
+    --good:#6fd98f;--danger:#ff7b61;--warn:#f5c26b;
+    --text:#e8f0f7;--muted:#5a7a8a;
+    --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+  }}
+  [data-theme=light]{{
+    --bg:#f0f4f8;--bg2:#e2e8ef;--panel:rgba(255,255,255,.97);
+    --border:rgba(0,0,0,.1);--text:#1a2733;--muted:#5a7a8a;
+  }}
+  *{{box-sizing:border-box;margin:0;padding:0;}}
+  html,body{{height:100%;}}
+  body{{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden;}}
+  header{{
+    position:sticky;top:0;z-index:100;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 28px;height:58px;
+    background:var(--panel);border-bottom:1px solid var(--border);
+    backdrop-filter:blur(12px);
+  }}
+  .brand{{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--text);}}
+  .brand-dot{{
+    width:10px;height:10px;border-radius:50%;
+    background:var(--accent);box-shadow:0 0 8px var(--accent);
+    animation:pulse 2.4s ease-in-out infinite;
+  }}
+  @keyframes pulse{{0%,100%{{opacity:1;transform:scale(1);}}50%{{opacity:.55;transform:scale(.8);}}}}
+  .brand-name{{font-weight:800;font-size:1.05rem;letter-spacing:-.3px;}}
+  .hdr-right{{display:flex;align-items:center;gap:16px;}}
+  .hdr-link{{color:var(--muted);text-decoration:none;font-size:13px;transition:color .2s;}}
+  .hdr-link:hover{{color:var(--accent);}}
+  #theme-btn{{
+    background:none;border:1px solid var(--border);border-radius:8px;
+    padding:5px 10px;cursor:pointer;font-size:15px;color:var(--text);
+    transition:border-color .2s;
+  }}
+  #theme-btn:hover{{border-color:var(--accent);}}
+  .hero{{
+    display:flex;flex-direction:column;align-items:center;
+    justify-content:center;text-align:center;
+    padding:80px 24px 56px;
+  }}
+  .hero-eyebrow{{
+    font-size:11px;letter-spacing:3px;text-transform:uppercase;
+    color:var(--accent);margin-bottom:20px;font-weight:600;
+  }}
+  .hero-title{{
+    font-size:clamp(2.2rem,6vw,4.2rem);font-weight:900;
+    line-height:1.08;letter-spacing:-1.5px;margin-bottom:22px;max-width:780px;
+  }}
+  .hero-title .hi{{color:var(--accent);}}
+  .hero-sub{{
+    font-size:1.05rem;color:var(--muted);max-width:540px;line-height:1.75;
+    margin-bottom:52px;
+  }}
+  .panels{{
+    display:grid;gap:24px;width:100%;max-width:920px;
+    grid-template-columns:1fr;
+  }}
+  @media(min-width:680px){{.panels{{grid-template-columns:repeat(2,minmax(0,1fr));}}}}
+  @media(min-width:1060px){{.panels{{grid-template-columns:repeat(3,minmax(0,1fr));max-width:1240px;}}}}
+  .panel{{
+    position:relative;overflow:hidden;
+    background:var(--panel);border:1px solid var(--border);border-radius:18px;
+    padding:38px 32px;text-decoration:none;color:inherit;
+    display:flex;flex-direction:column;gap:14px;
+    transition:transform .28s cubic-bezier(.4,0,.2,1),box-shadow .28s,border-color .28s;
+  }}
+  .panel:hover{{transform:translateY(-5px);box-shadow:0 20px 44px rgba(0,0,0,.55);}}
+  .panel-bt:hover{{border-color:var(--accent);box-shadow:0 20px 44px rgba(0,0,0,.4),0 0 0 1px var(--accent);}}
+  .panel-ft:hover{{border-color:var(--warn);box-shadow:0 20px 44px rgba(0,0,0,.4),0 0 0 1px var(--warn);}}
+  .panel-fh:hover{{border-color:#66b6ff;box-shadow:0 20px 44px rgba(0,0,0,.4),0 0 0 1px #66b6ff;}}
+  .panel::after{{
+    content:'';position:absolute;inset:0;border-radius:18px;
+    background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.025) 100%);
+    pointer-events:none;
+  }}
+  .panel-icon{{
+    width:52px;height:52px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;font-size:1.7rem;
+  }}
+  .panel-bt .panel-icon{{background:rgba(65,217,168,.12);}}
+  .panel-ft .panel-icon{{background:rgba(245,194,107,.12);}}
+  .panel-fh .panel-icon{{background:rgba(102,182,255,.12);}}
+  .panel-lbl{{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;}}
+  .panel-bt .panel-lbl{{color:var(--accent);}}
+  .panel-ft .panel-lbl{{color:var(--warn);}}
+  .panel-fh .panel-lbl{{color:#66b6ff;}}
+  .panel-title{{font-size:1.5rem;font-weight:800;letter-spacing:-.4px;}}
+  .panel-desc{{font-size:13.5px;color:var(--muted);line-height:1.7;}}
+  .panel-features{{display:flex;flex-direction:column;gap:7px;margin-top:2px;}}
+  .feat{{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted);}}
+  .feat::before{{content:'✓';font-weight:700;}}
+  .panel-bt .feat::before{{color:var(--accent);}}
+  .panel-ft .feat::before{{color:var(--warn);}}
+  .panel-fh .feat::before{{color:#66b6ff;}}
+  .panel-cta{{
+    margin-top:auto;padding-top:18px;
+    display:flex;align-items:center;gap:9px;font-size:14px;font-weight:700;
+  }}
+  .panel-bt .panel-cta{{color:var(--accent);}}
+  .panel-ft .panel-cta{{color:var(--warn);}}
+  .panel-fh .panel-cta{{color:#66b6ff;}}
+  .arrow{{font-size:1.1rem;transition:transform .2s;}}
+  .panel:hover .arrow{{transform:translateX(4px);}}
+  .stats-strip{{
+    display:flex;flex-wrap:wrap;justify-content:center;
+    border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+    background:var(--panel);
+  }}
+  .stat-item{{
+    flex:1;min-width:150px;padding:22px 36px;
+    text-align:center;border-right:1px solid var(--border);
+  }}
+  .stat-item:last-child{{border-right:none;}}
+  .stat-val{{font-size:1.7rem;font-weight:800;}}
+  .stat-lbl{{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:3px;}}
+  footer{{
+    text-align:center;padding:26px 24px;
+    color:var(--muted);font-size:12px;border-top:1px solid var(--border);
+  }}
+  footer a{{color:var(--muted);text-decoration:none;}}
+  footer a:hover{{color:var(--accent);}}
+</style>
 </head>
 <body>
-  <main class="page">
-    <!-- Brand -->
-    <div class="brand">
-      <span class="brand-dot"></span>
-      <span class="brand-name">TradeHub <span class="brand-sub">/ public dashboard</span></span>
-    </div>
 
-    <!-- Hero -->
-    <section class="hero">
-      <p class="eyebrow">Systematic trading research</p>
-      <h1>Strategy performance<br><em>made transparent</em></h1>
-      <p>
-        Public aggregate metrics from automated backtesting and forward testing pipelines.
-        All sensitive parameters stay private — only hashes, aggregates, dates and symbol scope are exposed.
+<header>
+  <a class="brand" href="#">
+    <span class="brand-dot"></span>
+    <span class="brand-name">TradeHub</span>
+  </a>
+  <div class="hdr-right">
+    <a class="hdr-link" href="reports/monitoring/latest/index.html">Monitoring</a>
+    <a class="hdr-link" href="reports/monitoring/full-history/index.html">Full History</a>
+    <a class="hdr-link" href="forward/index.html">Forward</a>
+    <a class="hdr-link" href="https://github.com/leweex95/tradehub-pages" target="_blank">GitHub</a>
+    <button id="theme-btn" title="Toggle theme">🌙</button>
+  </div>
+</header>
+
+<main class="hero" id="panels">
+  <div class="hero-eyebrow">Algorithmic Trading Research</div>
+  <h1 class="hero-title">
+    Strategy Intelligence<br><span class="hi">at Your Fingertips</span>
+  </h1>
+  <p class="hero-sub">
+    Multi-strategy backtesting across fixed 2-month regression windows and full
+    2-year+ history — plus live forward testing deployed from Windows via Docker.
+  </p>
+
+  <div class="panels">
+
+    <!-- 2-month regression Backtester panel -->
+    <a class="panel panel-bt" href="reports/monitoring/latest/index.html">
+      <div class="panel-icon">📊</div>
+      <div class="panel-lbl">2-Month Regression</div>
+      <h2 class="panel-title">Backtester</h2>
+      <p class="panel-desc">
+        Daily fixed-window regression suite — same 2025-03 to 2025-05 window
+        every run to catch code regressions and profitability drift early.
       </p>
-    </section>
-
-    <!-- Navigation cards -->
-    <div class="cards">
-      <a href="{mon_href}" class="card">
-        <div class="card-icon">📈</div>
-        <span class="card-badge">Daily Backtesting</span>
-        <h2>Monitoring Dashboard</h2>
-        <p>
-          Long-term regression tracking — runtime stability, profitability drift, result fingerprints
-          and consecutive-run change detection across all strategies.
-        </p>
-        <div class="card-meta">Last updated: {mon_updated}</div>
-        <div class="card-arrow">→</div>
-      </a>
-
-      <a href="{fwd_href}" class="card">
-        <div class="card-icon">⚡</div>
-        <span class="card-badge {fwd_badge_class}">{fwd_badge_label}</span>
-        <h2>Forward Testing</h2>
-        <p>
-          Live or demo-account forward deployments — trade-level data, equity curves, daily P&amp;L
-          breakdown and per-strategy performance metrics.
-        </p>
-        <div class="card-meta">Last updated: {fwd_updated}</div>
-        <div class="card-arrow">→</div>
-      </a>
-    </div>
-
-    <!-- Feature highlights -->
-    <div class="features">
-      <div class="feature">
-        <div class="feature-icon">🔒</div>
-        <h3>Privacy-first</h3>
-        <p>Only hashes, aggregates and dates are published. No signals, parameters or trade details exposed.</p>
+      <div class="panel-features">
+        <div class="feat">7 strategy families</div>
+        <div class="feat">9 symbols per strategy</div>
+        <div class="feat">Result fingerprinting &amp; regression alerts</div>
+        <div class="feat">Runtime stability tracking ({mon_runs} runs)</div>
       </div>
-      <div class="feature">
-        <div class="feature-icon">🔄</div>
-        <h3>Automated pipeline</h3>
-        <p>Daily backtests commit results automatically via GitHub Actions on each push.</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">📊</div>
-        <h3>Consecutive tracking</h3>
-        <p>Regressions detected by comparing each run vs the prior run — not a stale baseline.</p>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">🎯</div>
-        <h3>Multi-strategy</h3>
-        <p>Independent benchmark suites per strategy, with per-symbol breakdown and monthly windows.</p>
-      </div>
-    </div>
+      <div class="panel-cta">Open Backtester <span class="arrow">→</span></div>
+    </a>
 
-    <!-- Footer -->
-    <footer class="footer">
-      Generated {format_utc(now)} · commit {html.escape(commit)} · {len(reports)} report(s)
-    </footer>
-  </main>
+    <!-- 2-year+ Full History panel -->
+    <a class="panel panel-fh" href="reports/monitoring/full-history/index.html">
+      <div class="panel-icon">🧭</div>
+      <div class="panel-lbl">Full History</div>
+      <h2 class="panel-title">2024-01 to 2026-04</h2>
+      <p class="panel-desc">
+        Long-horizon strategy scoreboard over all supported symbols for global
+        robustness ranking and regime-aware profitability tracking.
+      </p>
+      <div class="panel-features">
+        <div class="feat">Same 9-symbol basket as regression suite</div>
+        <div class="feat">Fixed 2024–2026 horizon for comparability</div>
+        <div class="feat">PnL, win-rate &amp; profit factor rankings</div>
+        <div class="feat">Status: {fh_run_note} · last {fh_updated}</div>
+      </div>
+      <div class="panel-cta">Open Full-History View <span class="arrow">→</span></div>
+    </a>
+
+    <!-- Forward Testing panel -->
+    <a class="panel panel-ft" href="forward/index.html">
+      <div class="panel-icon">⚡</div>
+      <div class="panel-lbl">Live Deployment</div>
+      <h2 class="panel-title">Forward Testing</h2>
+      <p class="panel-desc">
+        Real-time strategy performance on live / demo accounts.
+        Windows-first Docker deployment with auto-published updates.
+      </p>
+      <div class="panel-features">
+        <div class="feat">Daily &amp; weekly P&amp;L breakdown</div>
+        <div class="feat">Per-symbol &amp; per-strategy filtering</div>
+        <div class="feat">Live equity curve ($10 k base)</div>
+        <div class="feat">Last updated: {fwd_updated}</div>
+      </div>
+      <div class="panel-cta">Open Forward Tests <span class="arrow">→</span></div>
+    </a>
+
+  </div>
+</main>
+
+<div class="stats-strip">
+  <div class="stat-item">
+    <div class="stat-val" style="color:var(--accent)">7</div>
+    <div class="stat-lbl">Strategies</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val" style="color:var(--warn)">9</div>
+    <div class="stat-lbl">Symbols</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val" style="color:var(--good)">+234R</div>
+    <div class="stat-lbl">Best Backtest</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val" style="color:var(--accent)">{mon_runs}</div>
+    <div class="stat-lbl">Regression Runs</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-val" style="color:var(--warn)">Docker</div>
+    <div class="stat-lbl">Containerised</div>
+  </div>
+</div>
+
+<footer>
+  <p>TradeHub Strategy Research Platform &nbsp;·&nbsp;
+  <a href="https://github.com/leweex95/tradehub-pages">GitHub Pages</a>
+  &nbsp;·&nbsp; commit {html.escape(commit)} &nbsp;·&nbsp; {ts}
+  </p>
+</footer>
+
+<script>
+(function(){{
+  var btn=document.getElementById('theme-btn');
+  var h=document.documentElement;
+  var s=localStorage.getItem('th-theme')||'dark';
+  h.setAttribute('data-theme',s);
+  btn.textContent=s==='dark'?'☀️':'🌙';
+  btn.addEventListener('click',function(){{
+    var t=h.getAttribute('data-theme')==='dark'?'light':'dark';
+    h.setAttribute('data-theme',t);
+    localStorage.setItem('th-theme',t);
+    btn.textContent=t==='dark'?'☀️':'🌙';
+  }});
+}})();
+</script>
 </body>
 </html>
 """
@@ -445,7 +470,7 @@ def build_html(reports: list[Report]) -> str:
 def main() -> int:
     reports = collect_reports()
     INDEX_FILE.write_text(build_html(reports), encoding="utf-8")
-    print(f"Generated {INDEX_FILE.relative_to(ROOT).as_posix()} with {len(reports)} report(s).")
+    print(f"Generated {INDEX_FILE.relative_to(ROOT).as_posix()} — 3-panel landing page.")
     return 0
 
 
