@@ -25,7 +25,9 @@
           &#x21bb; Refresh data
         </button>
         <nav class="header-nav" aria-label="Site navigation">
+          <a id="nav-prev" href="#" class="header-nav-link nav-arrow" title="Previous panel">&#8249;</a>
           <a href="../../../index.html" class="header-nav-link">Home</a>
+          <a id="nav-next" href="#" class="header-nav-link nav-arrow" title="Next panel">&#8250;</a>
         </nav>
         <button id="theme-toggle" class="theme-btn" aria-label="Toggle theme" title="Toggle dark / light">
           <span class="theme-icon theme-icon-dark">
@@ -151,5 +153,26 @@
   </div>
 
   <script src="app.js"></script>
+  <script>
+    /* Panel navigation — detect current panel by URL and set prev/next hrefs */
+    (function () {
+      var path = window.location.pathname;
+      var isLatest = path.indexOf('/latest/') !== -1;
+      var prevEl = document.getElementById('nav-prev');
+      var nextEl = document.getElementById('nav-next');
+      if (isLatest) {
+        prevEl.href  = '../../../forward/index.html';
+        prevEl.title = '← Forward Testing';
+        nextEl.href  = '../full-history/index.html';
+        nextEl.title = 'Full History →';
+      } else {
+        /* full-history panel */
+        prevEl.href  = '../latest/index.html';
+        prevEl.title = '← Monitoring';
+        nextEl.href  = '../../../forward/index.html';
+        nextEl.title = 'Forward Testing →';
+      }
+    })();
+  </script>
 </body>
 </html>

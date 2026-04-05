@@ -613,6 +613,11 @@ tbody tr:hover { background: var(--tab-hover-bg); }
 .header-nav-link:hover { color: var(--ink); background: var(--tab-hover-bg); }
 .header-nav-link.forward-link { color: var(--accent); }
 .header-nav-link.forward-link:hover { background: var(--accent-glow); }
+.header-nav-link.nav-arrow {
+  font-size: 1.1rem;
+  padding: 3px 8px;
+  line-height: 1;
+}
 
 /* ── Utility ─────────────────────────────────────────────────────────────── */
 .empty-state { color: var(--ink-muted); }

@@ -161,6 +161,12 @@ body {
 }
 .back-link:hover { color: var(--accent); border-color: var(--accent-border); }
 
+.forward-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* ── Theme toggle ────────────────────────────────────────────────── */
 .theme-btn {
   display: flex;
