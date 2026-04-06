@@ -629,13 +629,32 @@ tbody tr:hover { background: var(--tab-hover-bg); }
   padding-top: 8px;
 }
 
-/* ── Strategy filter (aggregate section) ────────────────────────────────── */
-.strat-filter-wrap {
+/* ── Global strategy filter bar (top-level, above all sections) ────────── */
+.global-filter-bar {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 4px;
+  padding: 14px 20px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+
+.gfb-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.gfb-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--panel-border);
+  margin: 0 4px;
+  align-self: center;
 }
 
 .filter-btns {
