@@ -557,6 +557,7 @@ tbody tr:hover { background: var(--tab-hover-bg); }
 .pill.warn   { background: var(--warn-soft);    color: var(--warn);   }
 .pill.info   { background: var(--accent-glow);  color: var(--accent); }
 .pill.demo   { background: rgba(122,152,174,.1); color: var(--ink-muted); }
+.pill.neutral{ background: rgba(122,152,174,.1); color: var(--ink-muted); }
 
 .chip {
   background: var(--accent-glow);

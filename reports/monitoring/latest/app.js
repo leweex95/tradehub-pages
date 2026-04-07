@@ -786,6 +786,8 @@ function renderTabPane(nickname, stratGroups) {
       <div class="panel" style="padding:18px" id="scope-${esc(nickname)}"></div>
       <div class="panel" style="padding:18px" id="integrity-${esc(nickname)}"></div>
     </div>
+
+    <div id="data-drift-${esc(nickname)}"></div>
   `;
 
   renderPaneAlerts(nickname, benchmarks);
@@ -796,6 +798,7 @@ function renderTabPane(nickname, stratGroups) {
   const suiteMeta = (state.history?.benchmarks ?? []).find(b => b.id === (benchmarks[0]?.id ?? ""));
   renderPaneScope(nickname, suiteMeta ?? benchmarks[0] ?? null);
   renderPaneIntegrity(nickname, latestRun);
+  renderDataDriftSection(nickname, benchmarks);
   renderPaneHistoryCharts(nickname, grp);
 }
 
@@ -1246,6 +1249,125 @@ async function renderInlineTradeChart(tkey, tidx) {
   }
 }
 
+// ── Per-pane: data drift section ──────────────────────────────────────────────
+/**
+ * Renders a "Data Drift" section showing per-symbol OHLC data stability.
+ *
+ * Status meanings (from collector.py detect_data_drift):
+ *   no_previous  – first run; no baseline to compare
+ *   no_change    – data identical to previous run
+ *   extended     – new rows appended after prev run's last bar; history intact
+ *   overwrite    – historical bars were modified within the anchor window  ← ALERT
+ *   truncated    – rows disappeared within the anchor window               ← ALERT
+ *   error        – could not recompute anchor hash; treat as suspicious
+ */
+function renderDataDriftSection(nickname, benchmarks) {
+  const el = document.getElementById(`data-drift-${nickname}`);
+  if (!el) return;
+
+  // Collect all per-symbol drift records across benchmarks
+  const rows = [];
+  for (const b of benchmarks) {
+    const drift = b.data_drift ?? {};
+    const syms = drift.symbols ?? {};
+    const windowLabel = b.window
+      ? `${b.window.start} → ${b.window.end}`
+      : (b.public_name ?? b.id);
+    for (const [sym, d] of Object.entries(syms)) {
+      rows.push({ sym, window: windowLabel, ...d });
+    }
+  }
+
+  if (!rows.length) {
+    el.innerHTML = "";
+    return;
+  }
+
+  const statusBadge = status => {
+    const cfg = {
+      overwrite:   { cls: "alert",  label: "⚠ overwrite"  },
+      truncated:   { cls: "alert",  label: "⚠ truncated"  },
+      error:       { cls: "warn",   label: "? error"       },
+      extended:    { cls: "info",   label: "↑ extended"    },
+      no_change:   { cls: "pass",   label: "✓ no change"   },
+      no_previous: { cls: "neutral",label: "— first run"   },
+    };
+    const c = cfg[status] ?? { cls: "neutral", label: esc(status) };
+    return `<span class="pill ${c.cls}" style="font-size:.72rem">${c.label}</span>`;
+  };
+
+  const fmtRows = (n, prev) => {
+    if (n == null) return "—";
+    if (prev == null) return String(n);
+    const delta = n - prev;
+    const sign = delta > 0 ? "+" : "";
+    return `${n} <span style="color:var(--ink-muted);font-size:.8rem">(${sign}${delta})</span>`;
+  };
+
+  const tfRows = (d) => {
+    const tf = d.primary_timeframe ?? {};
+    const utf = d.upper_timeframe ?? {};
+    return `
+      <tr>
+        <td>${esc(d.sym)}</td>
+        <td style="font-size:.78rem;color:var(--ink-muted)">${esc(d.window)}</td>
+        <td>${statusBadge(d.status)}</td>
+        <td title="Primary TF">
+          ${statusBadge(tf.status ?? "no_previous")}
+          <span style="font-size:.75rem;color:var(--ink-muted);margin-left:4px">${esc(tf.previous_end ? tf.previous_end.slice(0, 10) : "—")} → ${esc(tf.current_end ? tf.current_end.slice(0, 10) : "—")}</span>
+        </td>
+        <td title="Upper TF">
+          ${statusBadge(utf.status ?? "no_previous")}
+          <span style="font-size:.75rem;color:var(--ink-muted);margin-left:4px">${esc(utf.previous_end ? utf.previous_end.slice(0, 10) : "—")} → ${esc(utf.current_end ? utf.current_end.slice(0, 10) : "—")}</span>
+        </td>
+        <td style="font-size:.82rem">${fmtRows(tf.current_rows, tf.previous_rows)}</td>
+        <td style="font-size:.82rem">${tf.extension_rows != null ? (tf.extension_rows > 0 ? `+${tf.extension_rows}` : String(tf.extension_rows)) : "—"}</td>
+      </tr>`;
+  };
+
+  // Overall drift summary pill
+  const anyAlert = rows.some(r => r.status === "overwrite" || r.status === "truncated");
+  const anyExtended = rows.some(r => r.status === "extended");
+  const allGood = rows.every(r => r.status === "no_change" || r.status === "no_previous");
+  const summaryPill = anyAlert
+    ? `<span class="pill alert" style="margin-left:8px">data integrity alert</span>`
+    : anyExtended
+      ? `<span class="pill info" style="margin-left:8px">data extended</span>`
+      : allGood
+        ? `<span class="pill pass" style="margin-left:8px">all stable</span>`
+        : `<span class="pill neutral" style="margin-left:8px">first run</span>`;
+
+  el.innerHTML = `
+    <div class="panel" style="padding:20px;margin-top:16px">
+      <p class="eyebrow">Data integrity</p>
+      <h3 style="margin-bottom:4px">OHLC data drift ${summaryPill}</h3>
+      <p style="font-size:.82rem;color:var(--ink-muted);margin-bottom:14px">
+        Compares the OHLC data fingerprint for each symbol against the previous run.
+        <strong style="color:var(--danger)">Overwrite</strong> and
+        <strong style="color:var(--danger)">truncated</strong> indicate past candle data was modified — this can invalidate historical backtest comparisons.
+        <span style="color:var(--good)">Extended</span> means new candles were appended after the previous run's last bar; historical data is intact.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>Window</th>
+              <th>Overall</th>
+              <th>Primary TF</th>
+              <th>Upper TF</th>
+              <th>Rows (primary)</th>
+              <th>New rows</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(tfRows).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
 // ── Per-strategy history charts ───────────────────────────────────────────────
 function renderPaneHistoryCharts(nickname, grp) {
   const pane = document.getElementById(`pane-${nickname}`);
@@ -1356,6 +1478,24 @@ function renderPaneAlerts(nickname, benchmarks) {
       cards.push({ kind: "warn",
         title: `${label}: runtime anomaly`,
         body: "Latest runtime exceeds the tracked upper runtime band." });
+    }
+    // Data drift alerts
+    const drift = b.data_drift ?? {};
+    if (drift.overwrite_count > 0) {
+      const syms = Object.entries(drift.symbols ?? {})
+        .filter(([, d]) => d.status === "overwrite")
+        .map(([sym]) => sym).join(", ");
+      cards.push({ kind: "alert",
+        title: `${label}: historical OHLC data overwritten (${drift.overwrite_count} symbol${drift.overwrite_count > 1 ? "s" : ""})`,
+        body: `Past candle data was modified within the benchmark window for: ${syms}. Backtest results may no longer be comparable to previous runs — investigate the data source.` });
+    }
+    if (drift.truncated_count > 0) {
+      const syms = Object.entries(drift.symbols ?? {})
+        .filter(([, d]) => d.status === "truncated")
+        .map(([sym]) => sym).join(", ");
+      cards.push({ kind: "alert",
+        title: `${label}: OHLC data truncated (${drift.truncated_count} symbol${drift.truncated_count > 1 ? "s" : ""})`,
+        body: `Rows disappeared within the benchmark window for: ${syms}. Data may have been partially deleted or overwritten.` });
     }
   }
   if (!cards.length) {
