@@ -1,12 +1,57 @@
 {
-  "generated_at": "2026-04-05T18:01:48Z",
+  "generated_at": "2026-04-15T00:00:00Z",
   "mode": "live",
   "initial_equity": 10000.0,
   "period": {
-    "start": null,
+    "start": "2026-04-15T00:00:00Z",
     "end": null
   },
   "stats": {},
   "equity_curve": [],
-  "trades": []
+  "trades": [],
+  "deployed_at": "2026-04-15T00:00:00Z",
+  "deployed_strategies": [
+    "tradehub_macd_stochastic",
+    "tradehub_komjathy_sr"
+  ],
+  "deployments": [
+    {
+      "label": "silver-quail-803",
+      "strategy": "tradehub_macd_stochastic",
+      "account": "591502727",
+      "broker": "FxPro-MT5 Demo",
+      "instruments": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+        "AUDUSD",
+        "USDCAD",
+        "USDCHF",
+        "EURGBP",
+        "EURJPY",
+        "GBPJPY"
+      ],
+      "deployed_at": "2026-04-15T00:00:00Z",
+      "status": "awaiting_mt5_login"
+    },
+    {
+      "label": "midnight-heron-271",
+      "strategy": "tradehub_komjathy_sr",
+      "account": "590990731",
+      "broker": "FxPro-MT5 Demo",
+      "instruments": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+        "AUDUSD",
+        "USDCHF",
+        "EURGBP",
+        "EURJPY",
+        "GBPJPY",
+        "XAUUSD"
+      ],
+      "deployed_at": "2026-04-15T00:00:00Z",
+      "status": "awaiting_mt5_login"
+    }
+  ]
 }
