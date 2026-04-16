@@ -1,25 +1,79 @@
 {
-  "generated_at": "2026-04-15T00:00:00Z",
-  "mode": "live",
-  "initial_equity": 10000.0,
-  "period": {
-    "start": "2026-04-15T00:00:00Z",
-    "end": null
-  },
-  "stats": {},
-  "equity_curve": [],
-  "trades": [],
+  "generated_at": "2026-04-16T18:06:45.051162Z",
   "deployed_at": "2026-04-15T00:00:00Z",
+  "mode": "live",
+  "account": "591502727",
+  "initial_equity": 10000.0,
   "deployed_strategies": [
-    "tradehub_macd_stochastic",
-    "tradehub_komjathy_sr"
+    "tradehub_komjathy",
+    "tradehub_macd_stochastic"
   ],
+  "period": {
+    "start": "2026-04-15",
+    "end": "2026-04-16"
+  },
+  "stats": {
+    "total_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "win_rate_pct": 0.0,
+    "total_pnl_usd": 0,
+    "total_r": 0.0,
+    "r_per_day": 0.0,
+    "avg_win_usd": 0.0,
+    "avg_loss_usd": 0.0,
+    "profit_factor": 999.0,
+    "max_drawdown_pct": 0.0,
+    "initial_equity": 10000.0,
+    "final_equity": 10000.0,
+    "return_pct": 0.0,
+    "avg_duration_bars": 0,
+    "daily_pnl": {},
+    "weekly_pnl": {},
+    "weekly_r": {},
+    "by_symbol": {},
+    "by_strategy": {
+      "tradehub_macd_stochastic": {
+        "total_trades": 0,
+        "winning_trades": 0,
+        "losing_trades": 0,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 999.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_komjathy": {
+        "total_trades": 0,
+        "winning_trades": 0,
+        "losing_trades": 0,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 999.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      }
+    }
+  },
+  "equity_curve": [
+    {
+      "time": "2026-04-15T00:00:00",
+      "equity": 10000.0
+    }
+  ],
+  "trades": [],
   "deployments": [
     {
-      "label": "silver-quail-803",
-      "strategy": "tradehub_macd_stochastic",
-      "account": "591502727",
-      "broker": "FxPro-MT5 Demo",
+      "label": "MACD+Stoch HTF \u2014 MT5 Account 591502727",
+      "strategy": "macd_stochastic",
+      "broker": "mt5",
+      "account_id": "591502727",
+      "account_type": "demo",
+      "server": "FxPro-MT5 Demo",
       "instruments": [
         "EURUSD",
         "GBPUSD",
@@ -32,13 +86,15 @@
         "GBPJPY"
       ],
       "deployed_at": "2026-04-15T00:00:00Z",
-      "status": "awaiting_mt5_login"
+      "status": "running"
     },
     {
-      "label": "midnight-heron-271",
-      "strategy": "tradehub_komjathy_sr",
-      "account": "590990731",
-      "broker": "FxPro-MT5 Demo",
+      "label": "Komjathy SR \u2014 MT5 Account 590990731",
+      "strategy": "komjathy",
+      "broker": "mt5",
+      "account_id": "590990731",
+      "account_type": "demo",
+      "server": "FxPro-MT5 Demo",
       "instruments": [
         "EURUSD",
         "GBPUSD",
@@ -51,7 +107,21 @@
         "XAUUSD"
       ],
       "deployed_at": "2026-04-15T00:00:00Z",
-      "status": "awaiting_mt5_login"
+      "status": "running"
+    },
+    {
+      "label": "MACD+Stoch HTF \u2014 Alpaca Crypto",
+      "strategy": "macd_stochastic",
+      "broker": "alpaca",
+      "account_id": "alpaca_demo01",
+      "account_type": "demo",
+      "server": "https://paper-api.alpaca.markets",
+      "instruments": [
+        "BTC/USD",
+        "ETH/USD"
+      ],
+      "deployed_at": "2026-04-15T00:00:00Z",
+      "status": "running"
     }
   ]
 }
