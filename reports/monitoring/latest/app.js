@@ -13,7 +13,12 @@ const state = {
   // null/empty Set = show all strategies; populated Set = show only those nickname keys
   stratFilterSet: new Set(),
   globalSym: null,                            // global symbol filter
-  globalDateFilter: { from: null, to: null }, // global date filter
+  globalDateFilter: { from: null, to: null }, // global date filter (trade-level)
+  // Run-level date filter for aggregate charts (Runtime & Net PnL over time)
+  runDatePreset: "all",   // "1w" | "1m" | "3m" | "all" | "custom"
+  runDateFrom: null,
+  runDateTo: null,
+  _runDateInitialized: false,
 };
 
 // Store for benchmark trades (keyed by benchmarkId_runIdx) — used by modal
@@ -77,6 +82,34 @@ function getLatestRun() {
 function getPreviousRun() {
   const r = getDeduplicatedRuns();
   return r[r.length - 2] ?? null;
+}
+
+/**
+ * Returns deduplicated runs filtered for aggregate charts:
+ * - Hard cutoff 2026-04-07 for daily-repo-monitor suite (data before that is irrelevant).
+ * - Run-level date preset/range from state.runDatePreset / runDateFrom / runDateTo.
+ */
+function getRunsForAggCharts() {
+  let runs = getDeduplicatedRuns();
+  const suiteId = state.history?.suite?.id ?? "";
+  // Hard minimum cutoff for daily regression suite
+  if (suiteId === "daily-repo-monitor") {
+    runs = runs.filter(r => r.date >= "2026-04-07");
+  }
+  if (!runs.length || state.runDatePreset === "all") return runs;
+  if (state.runDatePreset === "custom") {
+    if (state.runDateFrom) runs = runs.filter(r => r.date >= state.runDateFrom);
+    if (state.runDateTo)   runs = runs.filter(r => r.date <= state.runDateTo);
+    return runs;
+  }
+  const latestRunDate = runs[runs.length - 1].date;
+  const base = new Date(latestRunDate);
+  let from;
+  if (state.runDatePreset === "1w") { from = new Date(base); from.setDate(from.getDate() - 7); }
+  if (state.runDatePreset === "1m") { from = new Date(base); from.setMonth(from.getMonth() - 1); }
+  if (state.runDatePreset === "3m") { from = new Date(base); from.setMonth(from.getMonth() - 3); }
+  if (from) runs = runs.filter(r => r.date >= from.toISOString().slice(0, 10));
+  return runs;
 }
 
 /**
@@ -160,13 +193,80 @@ function strategyNicknameOf(benchmark) {
 }
 
 function groupBenchmarksByStrategy(benchmarks) {
+  const hiddenNicks = new Set(state.history?.suite?.hidden_nicknames ?? []);
   const map = new Map();
   for (const b of benchmarks) {
+    if (hiddenNicks.size > 0 && hiddenNicks.has(b.nickname ?? "")) continue;
     const key = strategyNicknameOf(b);
     if (!map.has(key)) map.set(key, { nickname: key, public_name: b.public_name?.replace(/\s+\d{4}.*$/, "") || key, benchmarks: [] });
     map.get(key).benchmarks.push(b);
   }
   return [...map.values()];
+}
+
+// ── Aggregate date range toggle ───────────────────────────────────────────────
+/**
+ * Renders the run-level date range toggle inside #agg-date-toggle.
+ * Controls which monitoring RUNS are shown in the Runtime & Net PnL aggregate charts.
+ */
+function renderAggDateToggle() {
+  const el = document.getElementById("agg-date-toggle");
+  if (!el) return;
+  const allRuns = getDeduplicatedRuns();
+  const latestRunDate = allRuns[allRuns.length - 1]?.date ?? "";
+  const suiteId = state.history?.suite?.id ?? "";
+  const isDailyRegression = suiteId === "daily-repo-monitor";
+  const isCustom = state.runDatePreset === "custom";
+
+  const presets = [
+    ...(isDailyRegression ? [{ key: "1w", label: "1W" }] : []),
+    { key: "1m", label: "1M" },
+    { key: "3m", label: "3M" },
+    { key: "all", label: "All" },
+    { key: "custom", label: "Custom…" },
+  ];
+
+  el.innerHTML = `
+    <div class="gfb-section" style="flex-wrap:wrap;gap:8px;padding:6px 0">
+      <span class="filter-label">Show runs:</span>
+      <div class="filter-btns">
+        ${presets.map(p =>
+          `<button class="filter-btn${state.runDatePreset === p.key ? " active" : ""}" data-run-preset="${esc(p.key)}">${esc(p.label)}</button>`
+        ).join("")}
+      </div>
+      ${isCustom ? `<div class="date-custom-inputs">
+        <input type="date" class="date-input" id="agg-run-from" value="${state.runDateFrom || ""}" max="${latestRunDate}">
+        <span style="color:var(--ink-muted)">—</span>
+        <input type="date" class="date-input" id="agg-run-to" value="${state.runDateTo || ""}" min="${state.runDateFrom || ""}">
+        ${(state.runDateFrom || state.runDateTo) ? `<button class="filter-btn" id="agg-run-clear" title="Clear">✕</button>` : ""}
+      </div>` : ""}
+    </div>`;
+
+  el.querySelectorAll(".filter-btn[data-run-preset]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      state.runDatePreset = btn.dataset.runPreset;
+      if (state.runDatePreset !== "custom") { state.runDateFrom = null; state.runDateTo = null; }
+      renderAggDateToggle();
+      const sg = groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []);
+      renderAggCharts(sg);
+      renderAggLegend(sg);
+    });
+  });
+  document.getElementById("agg-run-from")?.addEventListener("change", e => {
+    state.runDateFrom = e.target.value || null;
+    renderAggDateToggle();
+    renderAggCharts(groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []));
+  });
+  document.getElementById("agg-run-to")?.addEventListener("change", e => {
+    state.runDateTo = e.target.value || null;
+    renderAggDateToggle();
+    renderAggCharts(groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []));
+  });
+  document.getElementById("agg-run-clear")?.addEventListener("click", () => {
+    state.runDatePreset = "all"; state.runDateFrom = null; state.runDateTo = null;
+    renderAggDateToggle();
+    renderAggCharts(groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []));
+  });
 }
 
 // ── Plot helper ───────────────────────────────────────────────────────────────
@@ -242,9 +342,17 @@ window.addEventListener("resize", debounce(renderCharts, 120));
 
 // ── Root boot ─────────────────────────────────────────────────────────────────
 function boot(stratGroups) {
+  // Default run date filter: 1W for daily regression suite (init once per session)
+  if (!state._runDateInitialized) {
+    state._runDateInitialized = true;
+    if ((state.history?.suite?.id ?? "") === "daily-repo-monitor") {
+      state.runDatePreset = "1w";
+    }
+  }
   renderHero();
   renderHeaderStatus();
   renderGlobalFilterBar(stratGroups);
+  renderAggDateToggle();
   renderAggCharts(stratGroups);
   renderAggLegend(stratGroups);
   renderTabs(stratGroups);
@@ -254,6 +362,7 @@ function boot(stratGroups) {
 function renderCharts() {
   const stratGroups = groupBenchmarksByStrategy(getLatestRun()?.benchmarks ?? []);
   renderGlobalFilterBar(stratGroups);
+  renderAggDateToggle();
   renderAggCharts(stratGroups);
   // also redraw any open pane charts
   if (state.activeTab) renderTabPane(state.activeTab, stratGroups);
@@ -474,7 +583,7 @@ function applyStratFilterToTabs(stratGroups) {
 
 // ── Aggregate charts (all strategies, all runs, deduped) ──────────────────────
 function renderAggCharts(stratGroups) {
-  const runs = getDeduplicatedRuns();  // ← one entry per calendar date
+  const runs = getRunsForAggCharts();  // filtered by run-level date preset + hard cutoff
 
   if (state.stratFilterSet.size === 1) {
     // Single-strategy filtered view: per-symbol stacked bars
@@ -517,6 +626,7 @@ function renderAggCharts(stratGroups) {
     plot("agg-runtime-chart", rtTraces, { xaxis: { type: "category" }, yaxis: { title: "Seconds" } });
     document.getElementById("agg-pnl-note").textContent = `Per-symbol net PnL for ${grp.public_name} — one bar per run date.`;
     document.getElementById("agg-runtime-note").textContent = `Per-symbol runtime breakdown for ${grp.public_name}.`;
+    renderAggEquityCurve(stratGroups);  // refresh cumulative P&L for the selected strategy
     return;
   }
 
@@ -1387,7 +1497,7 @@ function renderPaneHistoryCharts(nickname, grp) {
     pane.appendChild(chartSection);
   }
 
-  const runs = getDeduplicatedRuns();
+  const runs = getRunsForAggCharts();
   const dates = runs.map(r => r.date);
 
   if (activeSym) {
