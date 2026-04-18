@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18T05:11:07.907001Z",
+  "generated_at": "2026-04-18T13:21:34.892803Z",
   "deployed_at": "2026-04-15T00:00:00Z",
   "mode": "live",
   "account": "591502727",
@@ -119,6 +119,26 @@
       "instruments": [
         "BTC/USD",
         "ETH/USD"
+      ],
+      "deployed_at": "2026-04-15T00:00:00Z",
+      "status": "running"
+    },
+    {
+      "label": "Crypto MACD+Stoch \u2014 Alpaca Multi-Coin",
+      "strategy": "macd_stochastic",
+      "broker": "alpaca",
+      "account_id": "alpaca_demo02",
+      "account_type": "demo",
+      "server": "https://paper-api.alpaca.markets",
+      "instruments": [
+        "BTC/USD",
+        "ETH/USD",
+        "SOL/USD",
+        "DOGE/USD",
+        "AVAX/USD",
+        "LTC/USD",
+        "XRP/USD",
+        "LINK/USD"
       ],
       "deployed_at": "2026-04-15T00:00:00Z",
       "status": "running"
