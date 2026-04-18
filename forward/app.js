@@ -602,6 +602,7 @@ function renderDeployments() {
         </div>
         ${instruments ? `<div class="dep-instruments">${instruments}</div>` : ""}
         <div class="dep-status ${statusClass}">${statusLabel}</div>
+        ${d.vnc_url ? `<a href="${esc(d.vnc_url)}" target="_blank" rel="noopener noreferrer" class="dep-live-link">&#9654; View live terminal</a>` : ""}
       </div>`;
   }).join("");
 }

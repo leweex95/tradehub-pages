@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-04-18T13:21:34.892803Z",
+  "generated_at": "2026-04-18T14:22:22.431514Z",
   "deployed_at": "2026-04-15T00:00:00Z",
   "mode": "live",
-  "account": "591502727",
+  "account": "PA3RL5J3E0P2",
   "initial_equity": 10000.0,
   "deployed_strategies": [
     "tradehub_komjathy",
@@ -86,7 +86,8 @@
         "GBPJPY"
       ],
       "deployed_at": "2026-04-15T00:00:00Z",
-      "status": "running"
+      "status": "running",
+      "vnc_url": "http://82.38.139.11:3001"
     },
     {
       "label": "Komjathy SR \u2014 MT5 Account 590990731",
@@ -107,7 +108,44 @@
         "XAUUSD"
       ],
       "deployed_at": "2026-04-15T00:00:00Z",
-      "status": "running"
+      "status": "running",
+      "vnc_url": "http://82.38.139.11:3002"
+    },
+    {
+      "label": "Crypto MACD+Stoch \u2014 MT5 Account 591502727",
+      "strategy": "macd_stochastic",
+      "broker": "mt5",
+      "account_id": "591502727",
+      "account_type": "demo",
+      "server": "FxPro-MT5 Demo",
+      "instruments": [
+        "BITCOIN",
+        "ETHEREUM",
+        "SOLANA",
+        "XRP",
+        "DOGECOIN"
+      ],
+      "deployed_at": "2026-04-15T00:00:00Z",
+      "status": "running",
+      "vnc_url": "http://82.38.139.11:3001"
+    },
+    {
+      "label": "Crypto MACD+Stoch \u2014 MT5 Account 590990731",
+      "strategy": "macd_stochastic",
+      "broker": "mt5",
+      "account_id": "590990731",
+      "account_type": "demo",
+      "server": "FxPro-MT5 Demo",
+      "instruments": [
+        "BITCOIN",
+        "ETHEREUM",
+        "SOLANA",
+        "XRP",
+        "DOGECOIN"
+      ],
+      "deployed_at": "2026-04-15T00:00:00Z",
+      "status": "running",
+      "vnc_url": "http://82.38.139.11:3002"
     },
     {
       "label": "MACD+Stoch HTF \u2014 Alpaca Crypto",
@@ -121,7 +159,8 @@
         "ETH/USD"
       ],
       "deployed_at": "2026-04-15T00:00:00Z",
-      "status": "running"
+      "status": "running",
+      "vnc_url": "https://app.alpaca.markets/paper/dashboard/overview"
     },
     {
       "label": "Crypto MACD+Stoch \u2014 Alpaca Multi-Coin",
@@ -141,7 +180,8 @@
         "LINK/USD"
       ],
       "deployed_at": "2026-04-15T00:00:00Z",
-      "status": "running"
+      "status": "running",
+      "vnc_url": "https://app.alpaca.markets/paper/dashboard/overview"
     }
   ]
 }
