@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-18T14:22:22.431514Z",
+  "generated_at": "2026-04-19T00:29:28.252540Z",
   "deployed_at": "2026-04-15T00:00:00Z",
   "mode": "live",
   "account": "PA3RL5J3E0P2",
@@ -10,7 +10,7 @@
   ],
   "period": {
     "start": "2026-04-15",
-    "end": "2026-04-18"
+    "end": "2026-04-19"
   },
   "stats": {
     "total_trades": 0,
