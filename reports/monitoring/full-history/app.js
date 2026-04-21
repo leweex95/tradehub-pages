@@ -64,10 +64,19 @@ function debounce(fn, ms) {
 // ── Data helpers ──────────────────────────────────────────────────────────────
 function getRawRuns() { return state.history?.runs ?? []; }
 
-/** Returns runs deduped by date — keeps only the latest run_id per calendar day. */
+/** True if every benchmark in this run uses the full_history_ ID prefix. */
+function isFullHistoryRun(run) {
+  const bms = run.benchmarks ?? [];
+  return bms.length > 0 && bms.every(b => (b.id ?? "").startsWith("full_history_"));
+}
+
+/** Returns daily-regression runs deduped by date — keeps the latest run_id per calendar day.
+ *  Full-history runs are excluded; they use a different date window and would corrupt the
+ *  daily trend lines if mixed in. */
 function getDeduplicatedRuns() {
   const byDate = new Map();
   for (const run of getRawRuns()) {
+    if (isFullHistoryRun(run)) continue;  // full_history runs live in a separate pipeline
     const d = run.date;
     if (!byDate.has(d) || run.run_id > byDate.get(d).run_id) byDate.set(d, run);
   }
@@ -86,16 +95,10 @@ function getPreviousRun() {
 
 /**
  * Returns deduplicated runs filtered for aggregate charts:
- * - Hard cutoff 2026-04-07 for daily-repo-monitor suite (data before that is irrelevant).
  * - Run-level date preset/range from state.runDatePreset / runDateFrom / runDateTo.
  */
 function getRunsForAggCharts() {
   let runs = getDeduplicatedRuns();
-  const suiteId = state.history?.suite?.id ?? "";
-  // Hard minimum cutoff for daily regression suite
-  if (suiteId === "daily-repo-monitor") {
-    runs = runs.filter(r => r.date >= "2026-04-07");
-  }
   if (!runs.length || state.runDatePreset === "all") return runs;
   if (state.runDatePreset === "custom") {
     if (state.runDateFrom) runs = runs.filter(r => r.date >= state.runDateFrom);
