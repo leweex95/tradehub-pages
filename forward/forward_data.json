@@ -1,12 +1,600 @@
 {
-  "generated_at": "2026-04-05T18:01:48Z",
+  "generated_at": "2026-04-22T17:30:35.525596Z",
+  "deployed_at": "2026-04-15T00:00:00Z",
   "mode": "live",
+  "account": "591502727",
   "initial_equity": 10000.0,
+  "deployed_strategies": [
+    "36cd9558-ac12-4a92-858b-ecbab8939a32",
+    "7978a4ca-4731-4195-86ef-885a50c6ed10",
+    "e5fc68b3-5306-4b06-a67d-896a7201ec41",
+    "tradehub_komjathy",
+    "tradehub_macd_stochastic",
+    "tradehub_macd_stochastic_234001_1776517035",
+    "tradehub_macd_stochastic_234001_1776517304",
+    "tradehub_macd_stochastic_234001_1776517700",
+    "tradehub_macd_stochastic_234001_1776518435",
+    "tradehub_macd_stochastic_234001_1776667724",
+    "tradehub_macd_stochastic_234001_1776668045",
+    "tradehub_macd_stochastic_234001_1776669060",
+    "tradehub_macd_stochastic_234001_1776856547",
+    "tradehub_macd_stochastic_234001_1776860717"
+  ],
   "period": {
-    "start": null,
-    "end": null
+    "start": "2026-04-15",
+    "end": "2026-04-22"
   },
-  "stats": {},
-  "equity_curve": [],
-  "trades": []
+  "stats": {
+    "total_trades": 12,
+    "winning_trades": 0,
+    "losing_trades": 12,
+    "win_rate_pct": 0.0,
+    "total_pnl_usd": 0.0,
+    "total_r": 0.0,
+    "r_per_day": 0.0,
+    "avg_win_usd": 0.0,
+    "avg_loss_usd": 0.0,
+    "profit_factor": 0.0,
+    "max_drawdown_pct": 0.0,
+    "initial_equity": 10000.0,
+    "final_equity": 10000.0,
+    "return_pct": 0.0,
+    "avg_duration_bars": 0,
+    "daily_pnl": {
+      "2026-04-18": 0.0,
+      "2026-04-20": 0.0,
+      "2026-04-22": 0.0
+    },
+    "weekly_pnl": {
+      "2026-W16": 0.0,
+      "2026-W17": 0.0
+    },
+    "weekly_r": {
+      "2026-W16": 0.0,
+      "2026-W17": 0.0
+    },
+    "by_symbol": {
+      "ETH/USD": {
+        "trades": 4,
+        "win_rate": 0.0,
+        "total_pnl": 0.0,
+        "total_r": 0.0
+      },
+      "BTC/USD": {
+        "trades": 4,
+        "win_rate": 0.0,
+        "total_pnl": 0.0,
+        "total_r": 0.0
+      },
+      "LINK/USD": {
+        "trades": 3,
+        "win_rate": 0.0,
+        "total_pnl": 0.0,
+        "total_r": 0.0
+      },
+      "LTC/USD": {
+        "trades": 1,
+        "win_rate": 0.0,
+        "total_pnl": 0.0,
+        "total_r": 0.0
+      }
+    },
+    "by_strategy": {
+      "tradehub_macd_stochastic_234001_1776517035": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_macd_stochastic_234001_1776517304": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_macd_stochastic_234001_1776517700": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_macd_stochastic_234001_1776518435": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "7978a4ca-4731-4195-86ef-885a50c6ed10": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "e5fc68b3-5306-4b06-a67d-896a7201ec41": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "36cd9558-ac12-4a92-858b-ecbab8939a32": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_macd_stochastic_234001_1776667724": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_macd_stochastic_234001_1776668045": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_macd_stochastic_234001_1776669060": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_macd_stochastic_234001_1776856547": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_macd_stochastic_234001_1776860717": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_macd_stochastic": {
+        "total_trades": 0,
+        "winning_trades": 0,
+        "losing_trades": 0,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 999.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
+      "tradehub_komjathy": {
+        "total_trades": 0,
+        "winning_trades": 0,
+        "losing_trades": 0,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 999.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      }
+    }
+  },
+  "equity_curve": [
+    {
+      "time": "2026-04-15T00:00:00",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-18T12:57:22",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-18T13:01:52",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-18T13:08:28",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-18T13:20:43",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-20T06:45:48",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-20T06:45:48",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-20T06:45:48",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-20T06:48:53",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-20T06:54:14",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-20T07:11:09",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-22T11:15:57",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-22T12:25:27",
+      "equity": 10000.0
+    }
+  ],
+  "trades": [
+    {
+      "id": "d07770c4-72c4-4d22-9eea-89ccdcfe54d5",
+      "symbol": "LINK/USD",
+      "strategy": "tradehub_macd_stochastic_234001_1776517035",
+      "direction": "buy",
+      "entry_time": "2026-04-18T12:57:22",
+      "exit_time": "2026-04-18T12:57:22",
+      "entry_price": 9.39084,
+      "exit_price": 9.39084,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 100.0,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "26df9891-178f-4803-9536-ca516476cbd9",
+      "symbol": "BTC/USD",
+      "strategy": "tradehub_macd_stochastic_234001_1776517304",
+      "direction": "buy",
+      "entry_time": "2026-04-18T13:01:52",
+      "exit_time": "2026-04-18T13:01:52",
+      "entry_price": 76216.402,
+      "exit_price": 76216.402,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 0.1129,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "b84fd418-d55f-4939-9013-c35a5efea8e3",
+      "symbol": "ETH/USD",
+      "strategy": "tradehub_macd_stochastic_234001_1776517700",
+      "direction": "buy",
+      "entry_time": "2026-04-18T13:08:28",
+      "exit_time": "2026-04-18T13:08:28",
+      "entry_price": 2360.02,
+      "exit_price": 2360.02,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 0.1837,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "e528a515-eb15-4045-b5fc-ad403a994593",
+      "symbol": "ETH/USD",
+      "strategy": "tradehub_macd_stochastic_234001_1776518435",
+      "direction": "buy",
+      "entry_time": "2026-04-18T13:20:43",
+      "exit_time": "2026-04-18T13:20:43",
+      "entry_price": 2358.96,
+      "exit_price": 2358.96,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 0.009,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "910e4b12-9d45-43fc-ba09-5af7c9719210",
+      "symbol": "BTC/USD",
+      "strategy": "7978a4ca-4731-4195-86ef-885a50c6ed10",
+      "direction": "sell",
+      "entry_time": "2026-04-20T06:45:48",
+      "exit_time": "2026-04-20T06:45:48",
+      "entry_price": 74763.25,
+      "exit_price": 74763.25,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 0.11261775,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "7e3b52a4-d4df-41e4-8674-4144502fddc3",
+      "symbol": "ETH/USD",
+      "strategy": "e5fc68b3-5306-4b06-a67d-896a7201ec41",
+      "direction": "sell",
+      "entry_time": "2026-04-20T06:45:48",
+      "exit_time": "2026-04-20T06:45:48",
+      "entry_price": 2283.01,
+      "exit_price": 2283.01,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 0.19221825,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "7cdf3080-edfc-492f-b978-20d6172695ac",
+      "symbol": "LINK/USD",
+      "strategy": "36cd9558-ac12-4a92-858b-ecbab8939a32",
+      "direction": "sell",
+      "entry_time": "2026-04-20T06:45:48",
+      "exit_time": "2026-04-20T06:45:48",
+      "entry_price": 9.1953,
+      "exit_price": 9.1953,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 99.75,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "39509759-d218-477f-be3f-a1e399d28799",
+      "symbol": "BTC/USD",
+      "strategy": "tradehub_macd_stochastic_234001_1776667724",
+      "direction": "buy",
+      "entry_time": "2026-04-20T06:48:53",
+      "exit_time": "2026-04-20T06:48:53",
+      "entry_price": 74879.2,
+      "exit_price": 74879.2,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 0.1237,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "e51f3705-db65-4d8d-adf0-8527cbf2ade2",
+      "symbol": "LINK/USD",
+      "strategy": "tradehub_macd_stochastic_234001_1776668045",
+      "direction": "buy",
+      "entry_time": "2026-04-20T06:54:14",
+      "exit_time": "2026-04-20T06:54:14",
+      "entry_price": 9.2252,
+      "exit_price": 9.2252,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 50.5019,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "17640e1b-1cc9-4b43-b291-97bba09d1fbe",
+      "symbol": "LTC/USD",
+      "strategy": "tradehub_macd_stochastic_234001_1776669060",
+      "direction": "buy",
+      "entry_time": "2026-04-20T07:11:09",
+      "exit_time": "2026-04-20T07:11:09",
+      "entry_price": 54.9802,
+      "exit_price": 54.9802,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 0.4168,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "5fb55360-cf80-4dcb-9439-6390f32c5140",
+      "symbol": "BTC/USD",
+      "strategy": "tradehub_macd_stochastic_234001_1776856547",
+      "direction": "buy",
+      "entry_time": "2026-04-22T11:15:57",
+      "exit_time": "2026-04-22T11:15:57",
+      "entry_price": 78236.447,
+      "exit_price": 78236.447,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 0.1214,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "f033058b-7f7c-49db-844c-f321a4047e0c",
+      "symbol": "ETH/USD",
+      "strategy": "tradehub_macd_stochastic_234001_1776860717",
+      "direction": "buy",
+      "entry_time": "2026-04-22T12:25:27",
+      "exit_time": "2026-04-22T12:25:27",
+      "entry_price": 2401.64,
+      "exit_price": 2401.64,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 0.1985,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    }
+  ],
+  "deployments": [
+    {
+      "label": "MACD+Stoch \u2014 MT5 Account 591502727",
+      "strategy": "macd_stochastic",
+      "broker": "mt5",
+      "account_id": "591502727",
+      "account_type": "demo",
+      "server": "FxPro-MT5 Demo",
+      "instruments": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+        "AUDUSD",
+        "USDCAD",
+        "USDCHF",
+        "EURGBP",
+        "EURJPY",
+        "GBPJPY",
+        "BITCOIN",
+        "ETHEREUM",
+        "SOLANA",
+        "XRP",
+        "DOGECOIN"
+      ],
+      "deployed_at": "2026-04-15T00:00:00Z",
+      "status": "running",
+      "vnc_url": "http://82.38.139.11:3001"
+    },
+    {
+      "label": "Komjathy SR \u2014 MT5 Account 590990731",
+      "strategy": "komjathy",
+      "broker": "mt5",
+      "account_id": "590990731",
+      "account_type": "demo",
+      "server": "FxPro-MT5 Demo",
+      "instruments": [
+        "EURUSD",
+        "GBPUSD",
+        "USDJPY",
+        "AUDUSD",
+        "USDCHF",
+        "EURGBP",
+        "EURJPY",
+        "GBPJPY",
+        "XAUUSD"
+      ],
+      "deployed_at": "2026-04-15T00:00:00Z",
+      "status": "running",
+      "vnc_url": "http://82.38.139.11:3002"
+    },
+    {
+      "label": "MACD+Stoch HTF \u2014 Alpaca Crypto",
+      "strategy": "macd_stochastic",
+      "broker": "alpaca",
+      "account_id": "alpaca_demo01",
+      "account_type": "demo",
+      "server": "https://paper-api.alpaca.markets",
+      "instruments": [
+        "BTC/USD",
+        "ETH/USD"
+      ],
+      "deployed_at": "2026-04-15T00:00:00Z",
+      "status": "running",
+      "vnc_url": "https://app.alpaca.markets/paper/dashboard/overview"
+    },
+    {
+      "label": "Crypto MACD+Stoch \u2014 Alpaca Multi-Coin",
+      "strategy": "macd_stochastic",
+      "broker": "alpaca",
+      "account_id": "alpaca_demo02",
+      "account_type": "demo",
+      "server": "https://paper-api.alpaca.markets",
+      "instruments": [
+        "BTC/USD",
+        "ETH/USD",
+        "SOL/USD",
+        "DOGE/USD",
+        "AVAX/USD",
+        "LTC/USD",
+        "XRP/USD",
+        "LINK/USD"
+      ],
+      "deployed_at": "2026-04-15T00:00:00Z",
+      "status": "running",
+      "vnc_url": "https://app.alpaca.markets/paper/dashboard/overview"
+    }
+  ]
 }
