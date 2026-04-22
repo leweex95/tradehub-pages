@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-22T00:18:46.512555Z",
+  "generated_at": "2026-04-22T11:27:43.872793Z",
   "deployed_at": "2026-04-15T00:00:00Z",
   "mode": "live",
   "account": "591502727",
@@ -16,16 +16,17 @@
     "tradehub_macd_stochastic_234001_1776518435",
     "tradehub_macd_stochastic_234001_1776667724",
     "tradehub_macd_stochastic_234001_1776668045",
-    "tradehub_macd_stochastic_234001_1776669060"
+    "tradehub_macd_stochastic_234001_1776669060",
+    "tradehub_macd_stochastic_234001_1776856547"
   ],
   "period": {
     "start": "2026-04-15",
     "end": "2026-04-22"
   },
   "stats": {
-    "total_trades": 10,
+    "total_trades": 11,
     "winning_trades": 0,
-    "losing_trades": 10,
+    "losing_trades": 11,
     "win_rate_pct": 0.0,
     "total_pnl_usd": 0.0,
     "total_r": 0.0,
@@ -40,7 +41,8 @@
     "avg_duration_bars": 0,
     "daily_pnl": {
       "2026-04-18": 0.0,
-      "2026-04-20": 0.0
+      "2026-04-20": 0.0,
+      "2026-04-22": 0.0
     },
     "weekly_pnl": {
       "2026-W16": 0.0,
@@ -58,7 +60,7 @@
         "total_r": 0.0
       },
       "BTC/USD": {
-        "trades": 3,
+        "trades": 4,
         "win_rate": 0.0,
         "total_pnl": 0.0,
         "total_r": 0.0
@@ -197,6 +199,18 @@
         "initial_equity": 10000.0,
         "return_pct": 0.0
       },
+      "tradehub_macd_stochastic_234001_1776856547": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
       "tradehub_macd_stochastic": {
         "total_trades": 0,
         "winning_trades": 0,
@@ -266,6 +280,10 @@
     },
     {
       "time": "2026-04-20T07:11:09",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-22T11:15:57",
       "equity": 10000.0
     }
   ],
@@ -435,6 +453,23 @@
       "sl_price": 0.0,
       "tp_price": 0.0,
       "lots": 0.4168,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "5fb55360-cf80-4dcb-9439-6390f32c5140",
+      "symbol": "BTC/USD",
+      "strategy": "tradehub_macd_stochastic_234001_1776856547",
+      "direction": "buy",
+      "entry_time": "2026-04-22T11:15:57",
+      "exit_time": "2026-04-22T11:15:57",
+      "entry_price": 78236.447,
+      "exit_price": 78236.447,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 0.1214,
       "pnl_usd": 0.0,
       "pnl_r": 0.0,
       "exit_reason": "alpaca",
