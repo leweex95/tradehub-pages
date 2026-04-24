@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-24T00:47:04.809037Z",
+  "generated_at": "2026-04-24T08:52:09.588394Z",
   "deployed_at": "2026-04-15T00:00:00Z",
   "mode": "live",
   "account": "591502727",
@@ -18,16 +18,17 @@
     "tradehub_macd_stochastic_234001_1776668045",
     "tradehub_macd_stochastic_234001_1776669060",
     "tradehub_macd_stochastic_234001_1776856547",
-    "tradehub_macd_stochastic_234001_1776860717"
+    "tradehub_macd_stochastic_234001_1776860717",
+    "tradehub_macd_stochastic_234001_1777017915"
   ],
   "period": {
     "start": "2026-04-15",
     "end": "2026-04-24"
   },
   "stats": {
-    "total_trades": 12,
+    "total_trades": 13,
     "winning_trades": 0,
-    "losing_trades": 12,
+    "losing_trades": 13,
     "win_rate_pct": 0.0,
     "total_pnl_usd": 0.0,
     "total_r": 0.0,
@@ -43,7 +44,8 @@
     "daily_pnl": {
       "2026-04-18": 0.0,
       "2026-04-20": 0.0,
-      "2026-04-22": 0.0
+      "2026-04-22": 0.0,
+      "2026-04-24": 0.0
     },
     "weekly_pnl": {
       "2026-W16": 0.0,
@@ -55,7 +57,7 @@
     },
     "by_symbol": {
       "ETH/USD": {
-        "trades": 4,
+        "trades": 5,
         "win_rate": 0.0,
         "total_pnl": 0.0,
         "total_r": 0.0
@@ -224,6 +226,18 @@
         "initial_equity": 10000.0,
         "return_pct": 0.0
       },
+      "tradehub_macd_stochastic_234001_1777017915": {
+        "total_trades": 1,
+        "winning_trades": 0,
+        "losing_trades": 1,
+        "win_rate_pct": 0.0,
+        "total_pnl_usd": 0.0,
+        "total_r": 0.0,
+        "profit_factor": 0.0,
+        "max_drawdown_pct": 0.0,
+        "initial_equity": 10000.0,
+        "return_pct": 0.0
+      },
       "tradehub_macd_stochastic": {
         "total_trades": 0,
         "winning_trades": 0,
@@ -301,6 +315,10 @@
     },
     {
       "time": "2026-04-22T12:25:27",
+      "equity": 10000.0
+    },
+    {
+      "time": "2026-04-24T08:05:26",
       "equity": 10000.0
     }
   ],
@@ -504,6 +522,23 @@
       "sl_price": 0.0,
       "tp_price": 0.0,
       "lots": 0.1985,
+      "pnl_usd": 0.0,
+      "pnl_r": 0.0,
+      "exit_reason": "alpaca",
+      "duration_bars": 0
+    },
+    {
+      "id": "238b5812-8d19-41d9-acde-2c6d43fe90e4",
+      "symbol": "ETH/USD",
+      "strategy": "tradehub_macd_stochastic_234001_1777017915",
+      "direction": "buy",
+      "entry_time": "2026-04-24T08:05:26",
+      "exit_time": "2026-04-24T08:05:26",
+      "entry_price": 2311.07,
+      "exit_price": 2311.07,
+      "sl_price": 0.0,
+      "tp_price": 0.0,
+      "lots": 0.0104,
       "pnl_usd": 0.0,
       "pnl_r": 0.0,
       "exit_reason": "alpaca",
