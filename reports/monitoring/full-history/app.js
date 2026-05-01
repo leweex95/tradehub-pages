@@ -70,13 +70,17 @@ function isFullHistoryRun(run) {
   return bms.length > 0 && bms.every(b => (b.id ?? "").startsWith("full_history_"));
 }
 
-/** Returns daily-regression runs deduped by date — keeps the latest run_id per calendar day.
- *  Full-history runs are excluded; they use a different date window and would corrupt the
- *  daily trend lines if mixed in. */
+/** Returns runs deduped by date — keeps the latest run_id per calendar day.
+ *  Full-history runs are excluded only when mixed with daily-regression runs
+ *  in the same data file (full_history suite uses its own separate pipeline).
+ *  When ALL runs are full-history (standalone full-history data file), they are
+ *  kept so the full-history dashboard renders correctly. */
 function getDeduplicatedRuns() {
+  const raw = getRawRuns();
+  const allFullHistory = raw.length > 0 && raw.every(r => isFullHistoryRun(r));
   const byDate = new Map();
-  for (const run of getRawRuns()) {
-    if (isFullHistoryRun(run)) continue;  // full_history runs live in a separate pipeline
+  for (const run of raw) {
+    if (!allFullHistory && isFullHistoryRun(run)) continue;
     const d = run.date;
     if (!byDate.has(d) || run.run_id > byDate.get(d).run_id) byDate.set(d, run);
   }
