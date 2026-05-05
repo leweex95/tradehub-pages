@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-05-05T00:08:48.082397Z",
+  "generated_at": "2026-05-05T20:22:30.052914Z",
   "deployed_at": "2026-04-15T00:00:00Z",
   "mode": "live",
   "account": "591502727",
-  "initial_equity": 10000.0,
+  "initial_equity": 9999.65,
   "deployed_strategies": [
     "36cd9558-ac12-4a92-858b-ecbab8939a32",
     "7978a4ca-4731-4195-86ef-885a50c6ed10",
@@ -37,8 +37,8 @@
     "avg_loss_usd": 0.0,
     "profit_factor": 0.0,
     "max_drawdown_pct": 0.0,
-    "initial_equity": 10000.0,
-    "final_equity": 10000.0,
+    "initial_equity": 9999.65,
+    "final_equity": 9999.65,
     "return_pct": 0.0,
     "avg_duration_bars": 0,
     "daily_pnl": {
@@ -91,7 +91,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "tradehub_macd_stochastic_234001_1776517304": {
@@ -103,7 +103,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "tradehub_macd_stochastic_234001_1776517700": {
@@ -115,7 +115,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "tradehub_macd_stochastic_234001_1776518435": {
@@ -127,7 +127,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "7978a4ca-4731-4195-86ef-885a50c6ed10": {
@@ -139,7 +139,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "e5fc68b3-5306-4b06-a67d-896a7201ec41": {
@@ -151,7 +151,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "36cd9558-ac12-4a92-858b-ecbab8939a32": {
@@ -163,7 +163,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "tradehub_macd_stochastic_234001_1776667724": {
@@ -175,7 +175,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "tradehub_macd_stochastic_234001_1776668045": {
@@ -187,7 +187,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "tradehub_macd_stochastic_234001_1776669060": {
@@ -199,7 +199,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "tradehub_macd_stochastic_234001_1776856547": {
@@ -211,7 +211,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "tradehub_macd_stochastic_234001_1776860717": {
@@ -223,7 +223,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "tradehub_macd_stochastic_234001_1777017915": {
@@ -235,7 +235,7 @@
         "total_r": 0.0,
         "profit_factor": 0.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "tradehub_macd_stochastic": {
@@ -247,7 +247,7 @@
         "total_r": 0.0,
         "profit_factor": 999.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       },
       "tradehub_komjathy": {
@@ -259,7 +259,7 @@
         "total_r": 0.0,
         "profit_factor": 999.0,
         "max_drawdown_pct": 0.0,
-        "initial_equity": 10000.0,
+        "initial_equity": 9999.65,
         "return_pct": 0.0
       }
     }
@@ -267,59 +267,59 @@
   "equity_curve": [
     {
       "time": "2026-04-15T00:00:00",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-18T12:57:22",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-18T13:01:52",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-18T13:08:28",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-18T13:20:43",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-20T06:45:48",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-20T06:45:48",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-20T06:45:48",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-20T06:48:53",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-20T06:54:14",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-20T07:11:09",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-22T11:15:57",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-22T12:25:27",
-      "equity": 10000.0
+      "equity": 9999.65
     },
     {
       "time": "2026-04-24T08:05:26",
-      "equity": 10000.0
+      "equity": 9999.65
     }
   ],
   "trades": [
